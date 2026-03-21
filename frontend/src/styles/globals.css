@@ -1,0 +1,112 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrollbar — nearly invisible */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 300;
+  letter-spacing: 0.02em;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.text-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--color-text-dim);
+  font-weight: 500;
+}
+
+.text-hero {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-mid);
+}
+
+/* Thin horizontal rules */
+hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 0;
+}
+
+/* Selection */
+::selection {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Form resets */
+input, button, select, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Glow pulse for owned nodes */
+@keyframes glow-pulse {
+  0% { filter: blur(7px) brightness(1); }
+  50% { filter: blur(10px) brightness(1.5); }
+  100% { filter: blur(7px) brightness(1); }
+}
+
+.node-owned-glow {
+  animation: glow-pulse 3s infinite ease-in-out;
+}
+
+/* Floating number animation (revenue popups) */
+@keyframes float-up-fade {
+  0% { transform: translateY(0); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(-40px); opacity: 0; }
+}
+
+.revenue-popup {
+  animation: float-up-fade 1.5s forwards ease-out;
+  pointer-events: none;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dash flow for active edges during training */
+@keyframes edge-flow {
+  from { stroke-dashoffset: 20; }
+  to { stroke-dashoffset: 0; }
+}
+
+.edge-flow-active {
+  stroke-dasharray: 5, 5;
+  animation: edge-flow 1s linear infinite;
+}

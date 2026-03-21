@@ -1,0 +1,38 @@
+:root {
+  /* Surfaces — dark but perceptible */
+  --color-bg: #111111;
+  --color-bg2: #181818;
+  --color-bg3: #202020;
+  --color-surface: #1a1a1a;
+
+  /* Borders */
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-hi: rgba(255, 255, 255, 0.2);
+
+  /* Text */
+  --color-text: #f0f0f0;
+  --color-text-dim: rgba(255, 255, 255, 0.55);
+  --color-text-mid: rgba(255, 255, 255, 0.75);
+
+  /* Accents — muted, elegant */
+  --color-accent: #e8e8e8;
+  --color-accent2: rgba(255, 255, 255, 0.6);
+  --color-green: #4ade80;
+  --color-red: #f87171;
+  --color-yellow: #fbbf24;
+
+  /* Typography */
+  --font-sans: 'Inter', 'Helvetica Neue', 'Arial', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+
+  /* Spacing */
+  --header-h: 64px;
+  --section-gap: 0px;
+
+  /* Geometry */
+  --radius-card: 0px;
+  --radius-btn: 4px;
+  --radius-input: 4px;
+  --gap-md: 12px;
+  --pad-card: 24px;
+}
