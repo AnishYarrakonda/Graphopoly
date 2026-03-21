@@ -171,9 +171,9 @@ async def build_graph(req: GraphBuildRequest):
     if lock_resp:
         return lock_resp
 
-    if req.num_nodes > 20:
+    if req.num_nodes > 50:
         return JSONResponse(
-            {"status": "error", "message": "Maximum 20 nodes allowed."},
+            {"status": "error", "message": "Maximum 50 nodes allowed."},
             status_code=400,
         )
 
@@ -216,7 +216,7 @@ async def build_graph(req: GraphBuildRequest):
             auto_num_agents,
             min_destinations=config.agent.num_destinations,
             trip_reward=config.agent.trip_reward,
-            max_price=config.agent.max_price,
+            price_budget=config.agent.price_budget,
         )
     except ValueError as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=400)
@@ -249,9 +249,9 @@ async def random_graph(req: RandomGraphRequest):
             {"status": "error", "message": "Need at least 2 nodes."},
             status_code=400,
         )
-    if req.num_nodes > 20:
+    if req.num_nodes > 50:
         return JSONResponse(
-            {"status": "error", "message": "Maximum 20 nodes allowed."},
+            {"status": "error", "message": "Maximum 50 nodes allowed."},
             status_code=400,
         )
     if req.num_agents > 10:
@@ -296,7 +296,7 @@ async def random_graph(req: RandomGraphRequest):
             req.num_agents,
             min_destinations=req.num_destinations,
             trip_reward=config.agent.trip_reward,
-            max_price=config.agent.max_price,
+            price_budget=config.agent.price_budget,
         )
     except ValueError as e:
         return JSONResponse({"status": "error", "message": str(e)}, status_code=400)

@@ -5,17 +5,18 @@ One network instance is SHARED across all agents (same weights, per-agent
 forward passes with per-agent-relative node features).
 
 Architecture:
-  [N × F] ──► 2-5× GATv2Conv (dynamic depth) ──► node embeddings [N × H]
+  [N × F] ──► 2-7× GATv2Conv (dynamic depth) ──► node embeddings [N × H]
   Movement:   vectorised MLP([embed_curr ‖ embed_cand]) → score per candidate
-  Pricing:    Linear(embed_owned) → 3 logits per owned node
+  Pricing:    Linear(embed_owned) → raw scores → softmax → × budget = prices
   Value:      Linear([global_mean ‖ pos_embed]) → scalar  (light centralized critic)
 
 Key design choices:
   - concat=False on GATv2: multi-head output is *averaged* → embedding always H dims
-  - Dynamic depth: 2 layers for N≤5, 3 for N≤10, 4 for N≤15, 5 for N≤20
+  - Dynamic depth: 2 layers for N≤4, 3 for N≤10, 4 for N≤15, 5 for N≤25, 6 for N≤35, 7 for N≤50
   - Residual connections on layers 1+ (layer 0 changes dims: F→H, so no residual)
   - Batched embedding for PPO updates (stack transitions → one GNN pass)
   - Movement head is fully vectorised (no Python loop over candidates)
+  - Pricing head outputs softmax budget allocation (no per-node loop)
   - Value head uses both global mean-pool AND the agent's current-position embedding
 """
 
@@ -24,7 +25,7 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.distributions import Categorical
+from torch.distributions import Categorical, Dirichlet
 
 from torch_geometric.nn import GATv2Conv
 
@@ -44,7 +45,7 @@ class GraphopolyGNN(nn.Module):
         H = config.hidden_dim
         F_in = config.node_feature_dim  # 13
 
-        # ── GATv2 backbone (dynamic depth: use 2-5 of these) ─────────────
+        # ── GATv2 backbone (dynamic depth: use 2-7 of these) ─────────────
         self.gnn_layers = nn.ModuleList()
         in_ch = F_in
         for _ in range(config.max_gnn_layers):
@@ -66,8 +67,9 @@ class GraphopolyGNN(nn.Module):
             nn.Linear(config.move_mlp_hidden, 1),
         )
 
-        # ── Pricing head ─────────────────────────────────────────────────────
-        self.price_head = nn.Linear(H, 3)
+        # ── Pricing head (softmax budget allocation) ─────────────────────────
+        # Outputs a single score per owned node → softmax → × budget = prices
+        self.price_head = nn.Linear(H, 1)
 
         # ── Value head (light centralized critic) ────────────────────────────
         self.value_head = nn.Sequential(
@@ -100,13 +102,17 @@ class GraphopolyGNN(nn.Module):
     @staticmethod
     def _get_depth(num_nodes: int) -> int:
         """Return the number of GATv2 layers to use based on graph size."""
-        if num_nodes <= 5:
+        if num_nodes <= 4:
             return 2
         if num_nodes <= 10:
             return 3
         if num_nodes <= 15:
             return 4
-        return 5
+        if num_nodes <= 25:
+            return 5
+        if num_nodes <= 35:
+            return 6
+        return 7
 
     # ------------------------------------------------------------------
     # Core forward
@@ -169,11 +175,11 @@ class GraphopolyGNN(nn.Module):
         pairs = torch.cat([curr_expand, cand_embeds], dim=1)
         move_logits = self.move_head(pairs).squeeze(-1)
 
-        # Pricing
-        price_logits: torch.Tensor | None = None
+        # Pricing — raw scores for softmax budget allocation
+        price_scores: torch.Tensor | None = None
         if owned_nodes:
             owned_idx = torch.tensor(owned_nodes, dtype=torch.long, device=h.device)
-            price_logits = self.price_head(h[owned_idx])
+            price_scores = self.price_head(h[owned_idx]).squeeze(-1)  # [K]
 
         # Value
         global_mean = h.mean(dim=0)
@@ -182,7 +188,7 @@ class GraphopolyGNN(nn.Module):
             torch.cat([global_mean, pos_embed])
         ).squeeze(-1)
 
-        return move_logits, price_logits, value
+        return move_logits, price_scores, value
 
     # ------------------------------------------------------------------
     # Heads-only forward (used with pre-computed embeddings from batch)
@@ -204,10 +210,10 @@ class GraphopolyGNN(nn.Module):
         pairs = torch.cat([curr_expand, cand_embeds], dim=1)
         move_logits = self.move_head(pairs).squeeze(-1)
 
-        price_logits: torch.Tensor | None = None
+        price_scores: torch.Tensor | None = None
         if owned_nodes:
             owned_idx = torch.tensor(owned_nodes, dtype=torch.long, device=h.device)
-            price_logits = self.price_head(h[owned_idx])
+            price_scores = self.price_head(h[owned_idx]).squeeze(-1)  # [K]
 
         global_mean = h.mean(dim=0)
         pos_embed = h[current_pos]
@@ -215,7 +221,89 @@ class GraphopolyGNN(nn.Module):
             torch.cat([global_mean, pos_embed])
         ).squeeze(-1)
 
-        return move_logits, price_logits, value
+        return move_logits, price_scores, value
+
+    # ------------------------------------------------------------------
+    # Pricing helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _sample_prices(
+        price_scores: torch.Tensor,
+        budget: float,
+        deterministic: bool = False,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Sample a budget allocation from price scores.
+
+        Args:
+            price_scores: [K] raw scores from price head
+            budget: total budget to distribute
+            deterministic: if True, use softmax directly (no sampling noise)
+
+        Returns:
+            prices: [K] prices that sum to budget
+            log_prob: scalar log probability
+            entropy: scalar entropy
+        """
+        K = price_scores.size(0)
+        if K == 1:
+            # Only one node — all budget goes to it, no choice
+            prices = price_scores.new_tensor([budget])
+            log_prob = price_scores.new_zeros(())
+            entropy = price_scores.new_zeros(())
+            return prices, log_prob, entropy
+
+        if deterministic:
+            weights = F.softmax(price_scores, dim=0)
+            prices = weights * budget
+            log_prob = price_scores.new_zeros(())
+            entropy = price_scores.new_zeros(())
+            return prices, log_prob, entropy
+
+        # Use Dirichlet distribution for exploration
+        # Convert scores to positive concentration parameters
+        concentration = F.softplus(price_scores) + 0.5  # min 0.5 to avoid degenerate distributions
+        dist = Dirichlet(concentration)
+        weights = dist.rsample()  # [K], sums to 1
+        prices = weights * budget
+
+        log_prob = dist.log_prob(weights)
+        entropy = dist.entropy()
+
+        return prices, log_prob, entropy
+
+    @staticmethod
+    def _evaluate_prices(
+        price_scores: torch.Tensor,
+        action_prices_tensor: torch.Tensor,
+        budget: float,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Re-evaluate log_prob and entropy for stored price actions.
+
+        Args:
+            price_scores: [K] raw scores from price head
+            action_prices_tensor: [K] the prices that were actually taken
+            budget: total budget
+
+        Returns:
+            log_prob: scalar
+            entropy: scalar
+        """
+        K = price_scores.size(0)
+        if K == 1:
+            return price_scores.new_zeros(()), price_scores.new_zeros(())
+
+        concentration = F.softplus(price_scores) + 0.5
+        dist = Dirichlet(concentration)
+        # Reconstruct the weights from the prices
+        weights = action_prices_tensor / max(budget, 1e-8)
+        # Clamp to valid simplex range for numerical stability
+        weights = weights.clamp(min=1e-6)
+        weights = weights / weights.sum()
+
+        log_prob = dist.log_prob(weights)
+        entropy = dist.entropy()
+        return log_prob, entropy
 
     # ------------------------------------------------------------------
     # Action sampling (collection time — no gradients)
@@ -229,10 +317,11 @@ class GraphopolyGNN(nn.Module):
         valid_neighbors: list[int],
         owned_nodes: list[int],
         deterministic: bool = False,
+        price_budget: float = 100.0,
     ) -> tuple[dict, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Sample actions from the current policy."""
         candidates = [current_pos] + list(valid_neighbors)
-        move_logits, price_logits, value = self.forward(
+        move_logits, price_scores, value = self.forward(
             node_features, edge_index, current_pos, valid_neighbors, owned_nodes
         )
 
@@ -242,23 +331,22 @@ class GraphopolyGNN(nn.Module):
         move_lp = move_dist.log_prob(move_idx)
         move_ent = move_dist.entropy()
 
-        delta_map = {0: -1, 1: 0, 2: 1}
-        price_changes: dict[int, int] = {}
-        price_lp_acc = 0.0
-        price_ent_acc = 0.0
-        if price_logits is not None:
+        price_changes: dict[int, float] = {}
+        price_lp = move_logits.new_zeros(())
+        price_ent = move_logits.new_zeros(())
+
+        if price_scores is not None and len(owned_nodes) > 0:
+            prices, price_lp, price_ent = self._sample_prices(
+                price_scores, price_budget, deterministic
+            )
             for i, nid in enumerate(owned_nodes):
-                d = Categorical(logits=price_logits[i])
-                idx = price_logits[i].argmax() if deterministic else d.sample()
-                price_changes[nid] = delta_map[idx.item()]
-                price_lp_acc += d.log_prob(idx).item()
-                price_ent_acc += d.entropy().item()
+                price_changes[nid] = prices[i].item()
 
         dev = node_features.device
         return (
             {"move": move_action_node, "price_changes": price_changes},
-            move_lp + torch.tensor(price_lp_acc, device=dev),
-            move_ent + torch.tensor(price_ent_acc, device=dev),
+            move_lp + price_lp,
+            move_ent + price_ent,
             value,
         )
 
@@ -274,11 +362,12 @@ class GraphopolyGNN(nn.Module):
         valid_neighbors: list[int],
         owned_nodes: list[int],
         action_move: int,
-        action_prices: dict[int, int],
+        action_prices: dict[int, float],
+        price_budget: float = 100.0,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Re-evaluate stored actions under current policy (single transition)."""
         candidates = [current_pos] + list(valid_neighbors)
-        move_logits, price_logits, value = self.forward(
+        move_logits, price_scores, value = self.forward(
             node_features, edge_index, current_pos, valid_neighbors, owned_nodes
         )
 
@@ -289,19 +378,17 @@ class GraphopolyGNN(nn.Module):
         move_lp = move_dist.log_prob(move_idx)
         move_ent = move_dist.entropy()
 
-        inv_delta = {-1: 0, 0: 1, 1: 2}
         price_lp = node_features.new_zeros(())
         price_ent = node_features.new_zeros(())
-        if price_logits is not None:
-            for i, nid in enumerate(owned_nodes):
-                d = Categorical(logits=price_logits[i])
-                idx = torch.tensor(
-                    inv_delta[action_prices.get(nid, 0)],
-                    dtype=torch.long,
-                    device=node_features.device,
-                )
-                price_lp = price_lp + d.log_prob(idx)
-                price_ent = price_ent + d.entropy()
+        if price_scores is not None and len(owned_nodes) > 0:
+            action_prices_tensor = torch.tensor(
+                [action_prices.get(nid, 0.0) for nid in owned_nodes],
+                dtype=torch.float32,
+                device=node_features.device,
+            )
+            price_lp, price_ent = self._evaluate_prices(
+                price_scores, action_prices_tensor, price_budget
+            )
 
         return move_lp + price_lp, move_ent + price_ent, value
 
@@ -312,10 +399,11 @@ class GraphopolyGNN(nn.Module):
         valid_neighbors: list[int],
         owned_nodes: list[int],
         action_move: int,
-        action_prices: dict[int, int],
+        action_prices: dict[int, float],
+        price_budget: float = 100.0,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Re-evaluate using pre-computed embeddings (used in batched PPO update)."""
-        move_logits, price_logits, value = self.heads_from_embed(
+        move_logits, price_scores, value = self.heads_from_embed(
             h, current_pos, valid_neighbors, owned_nodes
         )
 
@@ -327,18 +415,16 @@ class GraphopolyGNN(nn.Module):
         move_lp = move_dist.log_prob(move_idx)
         move_ent = move_dist.entropy()
 
-        inv_delta = {-1: 0, 0: 1, 1: 2}
         price_lp = h.new_zeros(())
         price_ent = h.new_zeros(())
-        if price_logits is not None:
-            for i, nid in enumerate(owned_nodes):
-                d = Categorical(logits=price_logits[i])
-                idx = torch.tensor(
-                    inv_delta[action_prices.get(nid, 0)],
-                    dtype=torch.long,
-                    device=h.device,
-                )
-                price_lp = price_lp + d.log_prob(idx)
-                price_ent = price_ent + d.entropy()
+        if price_scores is not None and len(owned_nodes) > 0:
+            action_prices_tensor = torch.tensor(
+                [action_prices.get(nid, 0.0) for nid in owned_nodes],
+                dtype=torch.float32,
+                device=h.device,
+            )
+            price_lp, price_ent = self._evaluate_prices(
+                price_scores, action_prices_tensor, price_budget
+            )
 
         return move_lp + price_lp, move_ent + price_ent, value

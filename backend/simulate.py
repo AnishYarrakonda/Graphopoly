@@ -101,7 +101,7 @@ def simulate(
         "step": 0,
         "positions": [a.position for a in env.agents],
         "prices": {
-            str(n): a.prices.get(n, 0)
+            str(n): round(a.prices.get(n, 0.0), 2)
             for a in env.agents for n in a.owned_nodes
         },
         "actions": [],
@@ -137,6 +137,7 @@ def simulate(
                 action, _, _, _ = network.get_action_and_value(
                     node_feats, edge_index,
                     current_pos, valid_nbrs, owned,
+                    price_budget=config.agent.price_budget,
                 )
                 actions.append(action)
 
@@ -150,7 +151,7 @@ def simulate(
             "step": global_step,
             "positions": [a.position for a in env.agents],
             "prices": {
-                str(n): a.prices.get(n, 0)
+                str(n): round(a.prices.get(n, 0.0), 2)
                 for a in env.agents for n in a.owned_nodes
             },
             "actions": [

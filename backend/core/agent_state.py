@@ -12,7 +12,7 @@ class AgentState:
     position: int = 0                       # current node
     destinations: list[int] = field(default_factory=list)
     owned_nodes: list[int] = field(default_factory=list)
-    prices: dict[int, int] = field(default_factory=dict)  # {node_id: price}
+    prices: dict[int, float] = field(default_factory=dict)  # {node_id: price}
 
     # Running stats (reset each episode)
     cumulative_reward: float = 0.0
@@ -44,13 +44,16 @@ class AgentState:
         start_position: int,
         destinations: list[int],
         owned_nodes: list[int],
-        initial_price: int = 0,
+        price_budget: float = 100.0,
     ) -> None:
         """Reset for a new episode."""
         self.position = start_position
         self.destinations = destinations
         self.owned_nodes = owned_nodes
-        self.prices = {node: initial_price for node in owned_nodes}
+        # Uniform initial distribution of budget across owned nodes
+        num_owned = max(len(owned_nodes), 1)
+        uniform_price = price_budget / num_owned
+        self.prices = {node: uniform_price for node in owned_nodes}
         self.cumulative_reward = 0.0
         self.tax_revenue = 0.0
         self.tax_paid = 0.0

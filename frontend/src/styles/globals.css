@@ -9,32 +9,34 @@ body {
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow: hidden;
+  height: 100vh;
 }
 
 * {
   box-sizing: border-box;
 }
 
-/* Scrollbar — nearly invisible */
+/* Scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 300;
-  letter-spacing: 0.02em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   color: var(--color-text);
   margin: 0;
 }
@@ -42,15 +44,15 @@ h1, h2, h3, h4, h5, h6 {
 .text-label {
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 1.5px;
   color: var(--color-text-dim);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .text-hero {
   font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-mid);
 }
@@ -64,24 +66,13 @@ hr {
 
 /* Selection */
 ::selection {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-accent-glow);
 }
 
 /* Form resets */
 input, button, select, textarea {
   font-family: inherit;
   color: inherit;
-}
-
-/* Glow pulse for owned nodes */
-@keyframes glow-pulse {
-  0% { filter: blur(7px) brightness(1); }
-  50% { filter: blur(10px) brightness(1.5); }
-  100% { filter: blur(7px) brightness(1); }
-}
-
-.node-owned-glow {
-  animation: glow-pulse 3s infinite ease-in-out;
 }
 
 /* Floating number animation (revenue popups) */
@@ -109,4 +100,20 @@ input, button, select, textarea {
 .edge-flow-active {
   stroke-dasharray: 5, 5;
   animation: edge-flow 1s linear infinite;
+}
+
+/* Pulse animation for status dots */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Fade in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease-out;
 }

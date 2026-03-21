@@ -210,7 +210,7 @@ class GraphWorld:
     # ------------------------------------------------------------------
 
     def validate(self, num_agents: int, min_destinations: int = 1,
-                 trip_reward: float = 10.0, max_price: int = 20) -> None:
+                 trip_reward: float = 25.0, price_budget: float = 100.0) -> None:
         """Validate the graph meets all requirements.
 
         Raises ValueError with a descriptive message if any check fails.
@@ -257,11 +257,11 @@ class GraphWorld:
                 f"for connectivity."
             )
 
-        # Positive trip reward and max price
+        # Positive trip reward and price budget
         if trip_reward <= 0:
             errors.append(f"Trip reward must be positive, got {trip_reward}.")
-        if max_price <= 0:
-            errors.append(f"Max price must be positive, got {max_price}.")
+        if price_budget < 0:
+            errors.append(f"Price budget must be non-negative, got {price_budget}.")
 
         if errors:
             raise ValueError("Graph validation failed:\n  - " + "\n  - ".join(errors))

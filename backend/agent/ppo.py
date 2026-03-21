@@ -31,7 +31,7 @@ class Transition:
     current_pos: int
     valid_neighbors: list[int]
     action_move: int
-    action_prices: dict[int, int]
+    action_prices: dict[int, float]
     log_prob: float
     value: float
     reward: float = 0.0
@@ -118,6 +118,7 @@ class PPOTrainer:
         valid_neighbors: list[int],
         owned_nodes: list[int],
         deterministic: bool = False,
+        price_budget: float = 100.0,
     ) -> tuple[dict, float, float]:
         """Sample an action and store transition in buffer."""
         with torch.no_grad():
@@ -128,6 +129,7 @@ class PPOTrainer:
                 valid_neighbors,
                 owned_nodes,
                 deterministic=deterministic,
+                price_budget=price_budget,
             )
 
         self.buffer.add(Transition(
@@ -203,7 +205,7 @@ class PPOTrainer:
     # PPO update (batched)
     # ------------------------------------------------------------------
 
-    def update(self, last_value: float, owned_nodes: list[int]) -> dict[str, float]:
+    def update(self, last_value: float, owned_nodes: list[int], price_budget: float = 100.0) -> dict[str, float]:
         """Run PPO update with batched GNN embedding.
 
         The GNN embedding (expensive: 2-5 GATv2 layers) runs ONCE per batch
@@ -257,6 +259,7 @@ class PPOTrainer:
                         owned_nodes,
                         t.action_move,
                         t.action_prices,
+                        price_budget=price_budget,
                     )
 
                     # Clipped surrogate

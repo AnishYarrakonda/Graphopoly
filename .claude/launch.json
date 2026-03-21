@@ -3,11 +3,14 @@
   "configurations": [
     {
       "name": "frontend",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/Users/anish_1/.local/bin/node",
+      "runtimeArgs": ["node_modules/.bin/vite"],
       "port": 5173,
       "autoPort": false,
-      "cwd": "frontend"
+      "cwd": "frontend",
+      "env": {
+        "PATH": "/Users/anish_1/.local/bin:/usr/local/bin:/usr/bin:/bin"
+      }
     },
     {
       "name": "backend",

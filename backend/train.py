@@ -127,7 +127,8 @@ def train(
                 valid_nbrs   = env.get_valid_neighbors(aid)
                 owned        = env.get_owned_nodes(aid)
                 action, _lp, _val = trainers[aid].select_action(
-                    node_feats, current_pos, valid_nbrs, owned
+                    node_feats, current_pos, valid_nbrs, owned,
+                    price_budget=config.agent.price_budget,
                 )
                 actions.append(action)
 
@@ -187,7 +188,7 @@ def train(
                 valid_nbrs  = env.get_valid_neighbors(aid)
                 owned       = env.get_owned_nodes(aid)
                 last_val    = trainers[aid].get_value(node_feats, current_pos, valid_nbrs)
-                losses[aid] = trainers[aid].update(last_val, owned)
+                losses[aid] = trainers[aid].update(last_val, owned, price_budget=config.agent.price_budget)
 
         # ── Log episode (training metrics + snapshot trajectory) ─────────────
         episode_rewards = [a.cumulative_reward for a in env.agents]
@@ -252,7 +253,7 @@ def train_standalone() -> None:
         config.agent.num_agents,
         min_destinations=config.agent.num_destinations,
         trip_reward=config.agent.trip_reward,
-        max_price=config.agent.max_price,
+        price_budget=config.agent.price_budget,
     )
 
     def print_callback(metrics: dict) -> None:

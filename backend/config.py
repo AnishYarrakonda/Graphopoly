@@ -42,15 +42,14 @@ class AgentConfig:
     """Per-agent parameters."""
     num_agents: int = 2
     num_destinations: int = 2
-    trip_reward: float = 10.0   # reward per destination-to-destination trip completion
-    max_price: int = 20         # absolute cap on node price (positive or negative)
-    initial_price: int = 0
+    trip_reward: float = 25.0        # reward per destination-to-destination trip completion
+    price_budget: float = 100.0      # fixed total pricing budget per agent (distributed via softmax)
 
     def __post_init__(self):
         if self.trip_reward <= 0:
             raise ValueError(f"trip_reward must be positive, got {self.trip_reward}")
-        if self.max_price <= 0:
-            raise ValueError(f"max_price must be positive, got {self.max_price}")
+        if self.price_budget < 0:
+            raise ValueError(f"price_budget must be non-negative, got {self.price_budget}")
 
 
 @dataclass
@@ -64,7 +63,7 @@ class TrainConfig:
     clip_epsilon: float = 0.2
     entropy_coef: float = 0.01
     entropy_coef_final: float = 0.001    # anneal entropy to this value
-    entropy_anneal_frac: float = 0.5     # fraction of training over which to anneal
+    entropy_anneal_frac: float = 0.3     # fraction of training over which to anneal
     value_coef: float = 0.5
     max_grad_norm: float = 0.5
     ppo_epochs: int = 4
@@ -76,7 +75,7 @@ class NetworkConfig:
     """Per-agent GNN architecture (GATv2)."""
     node_feature_dim: int = 13    # per-node input features
     hidden_dim: int = 64          # node embedding size per GATv2 layer
-    max_gnn_layers: int = 5       # max GATv2 layers (dynamic depth: 2-5 based on graph size)
+    max_gnn_layers: int = 7       # max GATv2 layers (dynamic depth: 2-7 based on graph size)
     gat_heads: int = 4            # attention heads per layer (concat=False → output stays hidden_dim)
     move_mlp_hidden: int = 32     # hidden size of movement scoring MLP
     dropout: float = 0.0
@@ -123,6 +122,13 @@ class GraphopolyConfig:
         if "num_gnn_layers" in net_d and "max_gnn_layers" not in net_d:
             net_d["max_gnn_layers"] = net_d.pop("num_gnn_layers")
 
+        agent_d = d.get("agent", {})
+        # Legacy: max_price / initial_price → price_budget
+        if "max_price" in agent_d and "price_budget" not in agent_d:
+            agent_d["price_budget"] = float(agent_d.pop("max_price")) * 5
+        agent_d.pop("max_price", None)
+        agent_d.pop("initial_price", None)
+
         graph_d = d.get("graph", {})
         if "edge_probability" in graph_d and "num_edges" not in graph_d:
             graph_d.pop("edge_probability")
@@ -131,7 +137,7 @@ class GraphopolyConfig:
 
         return cls(
             graph=GraphConfig(**{k: v for k, v in graph_d.items() if k in GraphConfig.__dataclass_fields__}),
-            agent=AgentConfig(**{k: v for k, v in d.get("agent", {}).items() if k in AgentConfig.__dataclass_fields__}),
+            agent=AgentConfig(**{k: v for k, v in agent_d.items() if k in AgentConfig.__dataclass_fields__}),
             train=TrainConfig(**{k: v for k, v in train_d.items() if k in TrainConfig.__dataclass_fields__}),
             network=NetworkConfig(**{k: v for k, v in net_d.items() if k in NetworkConfig.__dataclass_fields__}),
             log=LogConfig(**{k: v for k, v in log_d.items() if k in LogConfig.__dataclass_fields__}),

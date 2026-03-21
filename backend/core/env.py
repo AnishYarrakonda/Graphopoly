@@ -101,13 +101,11 @@ class GraphopolyEnv:
                 start_pos = destinations[0]
 
             agent = AgentState(agent_id=aid)
-            # Clamp initial_price strictly within [0, max_price]
-            safe_initial = max(0, min(self.config.agent.max_price, self.config.agent.initial_price))
             agent.reset(
                 start_position=start_pos,
                 destinations=destinations,
                 owned_nodes=owned,
-                initial_price=safe_initial,
+                price_budget=self.config.agent.price_budget,
             )
             self.agents.append(agent)
 
@@ -223,18 +221,14 @@ class GraphopolyEnv:
             info["dest_completions"].append((aid, pos))
             agent.complete_destination(pos)
 
-        # 5. Apply price changes (clamped)
-        max_price = self.config.agent.max_price
+        # 5. Apply price changes (absolute prices from softmax budget distribution)
         for aid, action in enumerate(actions):
             agent = self.agents[aid]
             price_changes = action.get("price_changes", {})
-            for node_id, delta in price_changes.items():
+            for node_id, price in price_changes.items():
                 node_id = int(node_id)
                 if node_id in agent.prices:
-                    delta = max(-1, min(1, int(delta)))  # clamp delta to +/- 1
-                    new_price = agent.prices[node_id] + delta
-                    new_price = max(0, min(max_price, new_price))
-                    agent.prices[node_id] = new_price
+                    agent.prices[node_id] = max(0.0, float(price))
 
         # 6. Update cumulative rewards
         for aid in range(num_agents):
@@ -284,7 +278,7 @@ class GraphopolyEnv:
         N = self.world.num_nodes
         A = self.config.agent.num_agents
         diameter = max(self.world.diameter, 1)
-        max_price = max(self.config.agent.max_price, 1)
+        price_budget = max(self.config.agent.price_budget, 1.0)
 
         # Valid destinations = all agent dests except the last visited one
         valid_dests = [d for d in agent.destinations if d != agent.last_visited_dest]
@@ -314,7 +308,7 @@ class GraphopolyEnv:
             # Price (from whoever owns it)
             price = 0.0
             if owner >= 0:
-                price = self.agents[owner].prices.get(node, 0) / max_price
+                price = self.agents[owner].prices.get(node, 0.0) / price_budget
 
             # Occupancy: which agents are on this node
             occupancy = [
@@ -411,7 +405,7 @@ class GraphopolyEnv:
         """
         N = self.world.num_nodes
         A = self.config.agent.num_agents
-        max_price = max(self.config.agent.max_price, 1)
+        price_budget = max(self.config.agent.price_budget, 1.0)
 
         agents_at = [0] * N
         for agent in self.agents:
@@ -420,13 +414,13 @@ class GraphopolyEnv:
         prices: list[float] = []
         for j in range(N):
             owner = self.world.ownership.get(j, -1)
-            price_raw = self.agents[owner].prices.get(j, 0) if owner >= 0 else 0
-            prices.append(price_raw / max_price)
+            price_raw = self.agents[owner].prices.get(j, 0.0) if owner >= 0 else 0.0
+            prices.append(price_raw / price_budget)
 
         return {
             "agents_at": agents_at,
             "prices": prices,
-            "max_price": max_price,
+            "price_budget": price_budget,
             "norm_A": float(max(A - 1, 1)),
         }
 
@@ -455,7 +449,7 @@ class GraphopolyEnv:
             7  dist_from_j_to_nearest_valid_dest / D  — routing pull toward goal
             8  dist_from_j_to_last_visited_dest / D   — distance from last reward
             9  trip_reward / 100.0                    — global economic scale
-            10 max_price / 100.0                      — global price ceiling context
+            10 price_budget / 1000.0                   — global budget scale context
             11 degree / max_degree                    — structural bottleneck signal
             12 1 / num_nodes                          — graph scale awareness
         """
@@ -465,7 +459,7 @@ class GraphopolyEnv:
         agent = self.agents[agent_id]
         N = self.world.num_nodes
         diameter = max(self.world.diameter, 1)
-        max_price: int = shared["max_price"]
+        price_budget: float = shared["price_budget"]
         norm_A: float = shared["norm_A"]
         agents_at: list[int] = shared["agents_at"]
         prices: list[float] = shared["prices"]
@@ -491,7 +485,7 @@ class GraphopolyEnv:
                     opp_targeting[d] += 1
 
         trip_norm = self.config.agent.trip_reward / 100.0
-        maxp_norm = max_price / 100.0
+        budget_norm = price_budget / 1000.0
 
         # Structural features
         max_degree = max(self.world.graph.degree(j) for j in range(N))
@@ -533,7 +527,7 @@ class GraphopolyEnv:
                 dist_nearest,                                            # 7
                 dist_last,                                               # 8
                 trip_norm,                                               # 9
-                maxp_norm,                                               # 10
+                budget_norm,                                             # 10
                 self.world.graph.degree(j) / max_degree,                # 11 structural
                 inv_num_nodes,                                           # 12 graph scale
             ])
@@ -550,7 +544,7 @@ class GraphopolyEnv:
             "step": self.step_count,
             "agents": [a.to_dict() for a in self.agents],
             "prices": {
-                str(node): self.agents[owner].prices.get(node, 0)
+                str(node): round(self.agents[owner].prices.get(node, 0.0), 2)
                 for node, owner in self.world.ownership.items()
             },
             "positions": [a.position for a in self.agents],
