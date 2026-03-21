@@ -27,42 +27,50 @@ export const ChartDisplay: React.FC = () => {
 
   if (!chart) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>
-        Select a chart from the sidebar
+      <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)', fontSize: 13, opacity: 0.5 }}>
+        SELECT A CHART TO VISUALIZE
       </div>
     );
   }
 
   if (!params) {
     return (
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>
-        No analysis data available
+      <div style={{ flex: 1, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-dim)', fontSize: 13, opacity: 0.5 }}>
+        NO DATA AVAILABLE FOR THIS CHART
       </div>
     );
   }
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 24px 24px', minWidth: 0 }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', minWidth: 0 }}>
       {/* Title */}
-      <div style={{ marginBottom: 16 }}>
-        <h3 style={{
-          fontSize: 16,
-          fontWeight: 500,
-          color: 'rgba(255,255,255,0.8)',
-          fontFamily: "'Inter', sans-serif",
-          margin: 0,
-        }}>
-          {chart.title}
-        </h3>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
-          {chart.syncMode === 'atStep' ? `Step ${params.currentStep}` : `${timeline.length} steps`}
-          {' · '}
-          {chart.chartType} chart
-        </span>
+      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div>
+          <h3 style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: 'var(--color-text)',
+            fontFamily: "'Inter', sans-serif",
+            margin: '0 0 4px 0',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+          }}>
+            {chart.title}
+          </h3>
+          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase' }}>
+            {chart.syncMode === 'atStep' ? `Current Step: ${params.currentStep}` : `Full Timeline: ${timeline.length} steps`}
+            {' · '}
+            {chart.chartType} visualization
+          </span>
+        </div>
+        
+        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--color-accent)', border: '1px solid var(--color-accent)', borderRadius: 4, padding: '2px 6px' }}>
+           PRO ANALYSIS
+        </div>
       </div>
 
       {/* Chart */}
-      <div style={{ flex: 1, position: 'relative', minHeight: 400 }}>
+      <div style={{ flex: 1, position: 'relative', minHeight: 350 }}>
         <ChartWrapper chart={chart} params={params} />
       </div>
     </div>

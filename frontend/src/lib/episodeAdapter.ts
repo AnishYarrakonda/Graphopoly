@@ -14,25 +14,27 @@
  *   - metadata: { num_steps, num_agents, num_nodes, ... }
  */
 
+import type { GraphData } from '../types/graph';
+import type { StepHistoryEntry } from '../types/websocket';
 import type { EpisodeJSON, TrajectoryStep } from '../types/episode';
 
 interface RawMetrics {
-  step_history?: any[];
-  graph_data?: any;
-  graph_embedded?: any;
-  agent_details?: any[];
-  env_snapshot?: any;
-  config_snapshot?: any;
+  step_history?: StepHistoryEntry[];
+  graph_data?: GraphData;
+  graph_embedded?: GraphData;
+  agent_details?: unknown[];
+  env_snapshot?: { agents: { position: number }[] };
+  config_snapshot?: any; // Config is complex, keeping for now or use FullConfig
   layout?: Record<string, [number, number]>;
   episode_rewards?: number[];
   episode_trips?: number[];
   episode?: number;
   total_episodes?: number;
-  losses?: any;
+  losses?: Record<string, unknown>;
   // Already in EpisodeJSON format (from proper episode saves)
-  trajectory?: any[];
-  graph?: any;
-  metadata?: any;
+  trajectory?: TrajectoryStep[];
+  graph?: GraphData;
+  metadata?: Record<string, unknown>;
 }
 
 export function adaptToEpisodeJSON(raw: RawMetrics): EpisodeJSON {
@@ -41,7 +43,7 @@ export function adaptToEpisodeJSON(raw: RawMetrics): EpisodeJSON {
     return raw as unknown as EpisodeJSON;
   }
 
-  const graphData = raw.graph_data || raw.graph_embedded || {};
+  const graphData: Partial<GraphData> = raw.graph_data || raw.graph_embedded || {};
   const numNodes = graphData.num_nodes ?? 0;
   const numAgents = raw.agent_details?.length ?? raw.env_snapshot?.agents?.length ?? 0;
   const stepHistory = raw.step_history ?? [];
@@ -66,7 +68,7 @@ export function adaptToEpisodeJSON(raw: RawMetrics): EpisodeJSON {
 
   const tripReward = raw.config_snapshot?.agent?.trip_reward ?? 10;
 
-  const trajectory: TrajectoryStep[] = stepHistory.map((sh: any, _idx: number) => {
+  const trajectory: TrajectoryStep[] = stepHistory.map((sh: StepHistoryEntry, _idx: number) => {
     const positions = sh.positions ?? [];
     const rewards = sh.rewards ?? [];
     const actions = sh.actions ?? [];

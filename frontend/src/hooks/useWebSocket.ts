@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTrainingStore } from '../stores/trainingStore';
 import { useGraphStore } from '../stores/graphStore';
+import { GraphData } from '../types/graph';
 import { WSMessage } from '../types/websocket';
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`;
@@ -19,7 +20,7 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 function connectShared(
   handleEpisodeUpdate: (msg: Extract<WSMessage, { type: 'episode_update' }>) => void,
   handleTrainingComplete: () => void,
-  updateOwnership: (data: any) => void,
+  updateOwnership: (data: GraphData) => void,
 ) {
   if (sharedWs && sharedWs.readyState <= 1) return;
 
@@ -44,7 +45,7 @@ function connectShared(
         handleTrainingComplete();
       } else if (msg.type === 'training_error') {
         handleTrainingComplete();
-        console.error('[WS] Training Error:', (msg.data as any).error);
+        console.error('[WS] Training Error:', (msg.data as { error: string }).error);
       }
     } catch (err) {
       console.error('[WS] Message parse error:', err);

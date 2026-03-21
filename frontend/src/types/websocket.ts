@@ -12,7 +12,7 @@ export interface AgentDict {
   owned_nodes: number[];
   destinations: number[];
   prices: Record<string, number>;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface StepHistoryEntry {

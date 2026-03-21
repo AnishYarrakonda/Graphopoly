@@ -36,13 +36,13 @@ export interface EpisodeJSON {
     destinations: Record<string, number[]>;
     starting_positions: Record<string, number>;
   };
-  config: any;
+  config: Record<string, unknown>;
   initial_state: {
     agent_positions: Record<string, number>;
     agent_destinations: Record<string, number[]>;
     agent_owned_nodes: Record<string, number[]>;
     prices: Record<string, number>;
-    agent_stats: Record<string, any>;
+    agent_stats: Record<string, unknown>;
   };
   trajectory: TrajectoryStep[];
   training_metrics: {
@@ -52,9 +52,9 @@ export interface EpisodeJSON {
     num_episodes_trained: number;
   };
   aggregate_stats: {
-    agents: Record<string, any>;
-    nodes: Record<string, any>;
-    system: Record<string, any>;
+    agents: Record<string, unknown>;
+    nodes: Record<string, unknown>;
+    system: Record<string, unknown>;
   };
 }
 

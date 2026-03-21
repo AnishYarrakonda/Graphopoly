@@ -1,6 +1,5 @@
 import React from 'react';
 import { Header } from './Header';
-import { StatusBar } from './StatusBar';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -11,18 +10,22 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      minHeight: '100vh',
+      height: '100vh',
       width: '100vw',
       background: 'var(--color-bg)',
+      overflow: 'hidden', // Root shouldn't scroll; layout handles it
     }}>
       <Header />
-      <main style={{
+      <div style={{
         flex: 1,
-        paddingTop: 64, /* header height */
+        display: 'flex',
+        flexDirection: 'row',
+        paddingTop: 'var(--header-h)',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
         {children}
-      </main>
-      <StatusBar />
+      </div>
     </div>
   );
 };

@@ -1,53 +1,86 @@
 import React from 'react';
-import { useMagnetic } from '../../hooks/useMagnetic';
-
+import { useTrainingStore } from '../../stores/trainingStore';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 export const Header: React.FC = () => {
-  const logoRef = useMagnetic<HTMLHeadingElement>();
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  const { isTraining } = useTrainingStore();
+  const wsStatus = useWebSocket();
+
+  const statusColor = wsStatus === 'connected' ? 'var(--color-success)' : wsStatus === 'connecting' ? 'var(--color-warning)' : 'var(--color-danger)';
 
   return (
     <header style={{
-      height: 64,
+      height: 'var(--header-h)',
       display: 'flex',
       alignItems: 'center',
-      padding: '0 48px',
+      padding: '0 24px',
       justifyContent: 'space-between',
       position: 'fixed',
       top: 0,
       left: 0,
       right: 0,
       zIndex: 100,
-      // Metallic gradient + heavy blur
-      background: 'linear-gradient(180deg, rgba(30,30,30,0.7) 0%, rgba(18,18,18,0.85) 50%, rgba(10,10,10,0.95) 100%)',
-      backdropFilter: 'blur(20px) saturate(1.2)',
-      WebkitBackdropFilter: 'blur(20px) saturate(1.2)',
-      borderBottom: '1px solid rgba(255,255,255,0.06)',
-      // Subtle metallic sheen
-      boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 1px 8px rgba(0,0,0,0.4)',
+      background: 'var(--color-bg-elevated)',
+      backdropFilter: 'blur(12px)',
+      borderBottom: '1px solid var(--color-border)',
+      boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 48 }}>
-        <h1
-          ref={logoRef}
-          onClick={scrollToTop}
-          style={{
-            fontSize: 15,
-            fontWeight: 300,
-            letterSpacing: '0.25em',
-            textTransform: 'uppercase',
-            color: '#e8e8e8',
-            fontFamily: "'Inter', sans-serif",
-            cursor: 'pointer',
-            transition: 'color 0.2s, transform 0.1s ease-out',
-            margin: 0,
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-          onMouseLeave={e => (e.currentTarget.style.color = '#e8e8e8')}
-        >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+        <h1 style={{
+          fontSize: 14,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+          color: 'var(--color-text)',
+          margin: 0,
+        }}>
           GRAPHOPOLY
         </h1>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            background: 'rgba(255,255,255,0.03)',
+            borderRadius: '20px',
+            fontSize: 10,
+            fontWeight: 600,
+            color: 'var(--color-text-dim)',
+            border: '1px solid var(--color-border)',
+          }}>
+            <div style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: statusColor,
+              boxShadow: wsStatus === 'connected' ? `0 0 8px ${statusColor}` : 'none',
+            }} />
+            {wsStatus.toUpperCase()}
+          </div>
+
+          {isTraining && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '4px 10px',
+              background: 'var(--color-accent-glow)',
+              borderRadius: '20px',
+              fontSize: 10,
+              fontWeight: 700,
+              color: 'var(--color-accent)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+            }}>
+              SIMULATION ACTIVE
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div style={{ fontSize: 11, color: 'var(--color-text-dim)', fontWeight: 500, opacity: 0.5 }}>
+        RESEARCH v2.0
       </div>
     </header>
   );

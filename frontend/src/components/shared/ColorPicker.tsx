@@ -60,7 +60,14 @@ export const ColorPicker: React.FC<Props> = ({ value, onChange }) => {
   // Sync from parent
   useEffect(() => {
     const rgb = hexToRgb(value);
-    if (rgb) { setHsv(rgbToHsv(...rgb)); setHexInput(value); }
+    if (rgb) {
+      const newHsv = rgbToHsv(...rgb);
+      setHsv(prev => {
+        if (prev[0] === newHsv[0] && prev[1] === newHsv[1] && prev[2] === newHsv[2]) return prev;
+        return newHsv;
+      });
+      setHexInput(prev => (prev === value ? prev : value));
+    }
   }, [value]);
 
   // Click-outside close
@@ -74,19 +81,20 @@ export const ColorPicker: React.FC<Props> = ({ value, onChange }) => {
   }, [open]);
 
   // Draw SV canvas
+  const hsvHue = hsv[0];
   useEffect(() => {
     if (!open) return;
     const c = svRef.current; if (!c) return;
     const ctx = c.getContext('2d')!;
     const hg = ctx.createLinearGradient(0, 0, SV_W, 0);
     hg.addColorStop(0, '#fff');
-    hg.addColorStop(1, `hsl(${hsv[0]},100%,50%)`);
+    hg.addColorStop(1, `hsl(${hsvHue},100%,50%)`);
     ctx.fillStyle = hg; ctx.fillRect(0, 0, SV_W, SV_H);
     const bg = ctx.createLinearGradient(0, 0, 0, SV_H);
     bg.addColorStop(0, 'rgba(0,0,0,0)');
     bg.addColorStop(1, '#000');
     ctx.fillStyle = bg; ctx.fillRect(0, 0, SV_W, SV_H);
-  }, [open, hsv[0]]);
+  }, [open, hsvHue]);
 
   // Draw hue canvas
   useEffect(() => {

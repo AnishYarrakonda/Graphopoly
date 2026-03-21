@@ -12,13 +12,10 @@ import { downloadAllCsvsAsZip } from '../../lib/csvExport';
 import { AGENT_COLORS } from '../../lib/chartTheme';
 import type { BuildParams } from '../../lib/chartRegistry';
 
-const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <h2 style={{
-    fontSize: 11, fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase',
-    color: 'rgba(255,255,255,0.3)', marginBottom: 28, fontFamily: "'Inter', sans-serif",
-  }}>
-    {children}
-  </h2>
+const EmptyState = ({ message }: { message: string }) => (
+  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.3 }}>
+    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>{message.toUpperCase()}</div>
+  </div>
 );
 
 export const AnalysisReplayPanel: React.FC = () => {
@@ -73,90 +70,74 @@ export const AnalysisReplayPanel: React.FC = () => {
   const hasCharts = timeline.length > 0;
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--color-bg-surface)' }}>
 
-      {/* ── REPLAY CONTROLS ────────────────────────────────────────── */}
-      <div style={{ padding: '40px 64px 32px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-        <SectionTitle>Replay</SectionTitle>
-        {episodeData ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28 }}>
-            {/* Slider */}
-            <div style={{ width: '100%', maxWidth: 860 }}>
-              <RangeSlider
-                value={currentStep}
-                min={0}
-                max={totalSteps > 0 ? totalSteps - 1 : 0}
-                onChange={setStep}
-                label={`Step ${currentStep}`}
-                formatValue={() => `/ ${totalSteps - 1}`}
-              />
-            </div>
+      {/* ── REPLAY CONTROLS BANNER ────────────────────────────────── */}
+      <div style={{ 
+        padding: '12px 24px', 
+        borderBottom: '1px solid var(--color-border)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 24,
+        background: 'rgba(255,255,255,0.01)'
+      }}>
+        <div style={{ flex: 1, maxWidth: 600 }}>
+          {episodeData && (
+            <RangeSlider
+              value={currentStep}
+              min={0}
+              max={totalSteps > 0 ? totalSteps - 1 : 0}
+              onChange={setStep}
+              label={`STEP ${currentStep}`}
+              formatValue={() => `/ ${totalSteps - 1}`}
+            />
+          )}
+        </div>
 
-            {/* Playback buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Button style={{ padding: '10px 18px' }} onClick={() => jumpBack(10)}><Rewind size={17} /></Button>
-              <Button style={{ padding: '10px 18px' }} onClick={stepBack}><SkipBack size={17} /></Button>
-              {isPlaying ? (
-                <Button onClick={pause} style={{ padding: '13px 26px', background: '#fff', color: '#000', borderColor: '#fff' }}>
-                  <Pause size={20} />
-                </Button>
-              ) : (
-                <Button onClick={play} style={{ padding: '13px 26px', background: 'transparent', color: '#fff', borderColor: 'rgba(255,255,255,0.4)' }}>
-                  <Play size={20} />
-                </Button>
-              )}
-              <Button style={{ padding: '10px 18px' }} onClick={stepForward}><SkipForward size={17} /></Button>
-              <Button style={{ padding: '10px 18px' }} onClick={() => jumpForward(10)}><FastForward size={17} /></Button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Button onClick={() => jumpBack(10)} variant="secondary" style={{ padding: '8px 12px' }}><Rewind size={14} /></Button>
+          <Button onClick={stepBack} variant="secondary" style={{ padding: '8px 12px' }}><SkipBack size={14} /></Button>
+          
+          {isPlaying ? (
+            <Button onClick={pause} variant="primary" style={{ padding: '8px 20px', background: 'var(--color-text)', color: 'var(--color-bg)' }}>
+              <Pause size={16} fill="currentColor" />
+            </Button>
+          ) : (
+            <Button onClick={play} variant="primary" style={{ padding: '8px 20px' }}>
+              <Play size={16} fill="currentColor" />
+            </Button>
+          )}
 
-              {hasCharts && (
-                <Button
-                  onClick={handleDownloadAll}
-                  disabled={isDownloading}
-                  style={{ marginLeft: 16, color: 'rgba(255,255,255,0.5)', fontSize: 12, padding: '10px 18px', borderColor: 'rgba(255,255,255,0.15)' }}
-                >
-                  <Download size={15} style={{ marginRight: 8 }} />
-                  {isDownloading ? 'Exporting...' : 'Download All CSVs'}
-                </Button>
-              )}
+          <Button onClick={stepForward} variant="secondary" style={{ padding: '8px 12px' }}><SkipForward size={14} /></Button>
+          <Button onClick={() => jumpForward(10)} variant="secondary" style={{ padding: '8px 12px' }}><FastForward size={14} /></Button>
+        </div>
+
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+             {hasCharts && (
+               <Button onClick={handleDownloadAll} disabled={isDownloading} variant="secondary" style={{ fontSize: 10, padding: '8px 16px', gap: 8 }}>
+                 <Download size={14} /> {isDownloading ? 'EXPORTING...' : 'EXPORT CSV'}
+               </Button>
+             )}
+        </div>
+      </div>
+
+      {/* ── ANALYSIS CONTENT ─────────────────────────────────────── */}
+      <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {isTraining ? (
+          <EmptyState message="Simulation active. Stop to analyze." />
+        ) : isComputing ? (
+          <EmptyState message="Computing analysis timeline..." />
+        ) : hasCharts ? (
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <ChartNavigator />
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              <ChartDisplay />
             </div>
           </div>
         ) : (
-          <div style={{ padding: '24px 0', textAlign: 'center' }}>
-            <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 15, lineHeight: 1.7 }}>
-              {isTraining
-                ? 'Simulation in progress. Stop to replay and analyze.'
-                : 'Run a simulation to enable replay and analysis.'}
-            </p>
-          </div>
+          <EmptyState message="No analysis data. Complete a simulation first." />
         )}
       </div>
-
-      {/* ── ANALYSIS AREA ──────────────────────────────────────────── */}
-      {isTraining ? (
-        <div style={{ padding: '80px 48px', textAlign: 'center' }}>
-          <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 16, lineHeight: 1.8 }}>
-            Stop the simulation to view analysis
-          </p>
-          <p style={{ color: 'rgba(255,255,255,0.12)', fontSize: 13, marginTop: 8 }}>
-            Charts will populate once the simulation data is available
-          </p>
-        </div>
-      ) : isComputing ? (
-        <div style={{ padding: '80px 48px', textAlign: 'center' }}>
-          <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 14 }}>Computing analysis...</p>
-        </div>
-      ) : hasCharts ? (
-        <div style={{ display: 'flex', minHeight: 600, borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-          <ChartNavigator />
-          <ChartDisplay />
-        </div>
-      ) : (
-        <div style={{ padding: '80px 48px', textAlign: 'center' }}>
-          <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: 14, lineHeight: 1.8 }}>
-            Run and stop a simulation to see analysis charts here.
-          </p>
-        </div>
-      )}
     </div>
   );
 };

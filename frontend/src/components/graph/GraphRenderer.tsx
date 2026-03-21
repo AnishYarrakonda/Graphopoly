@@ -3,14 +3,12 @@ import { useGraphStore } from '../../stores/graphStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useTrainingStore } from '../../stores/trainingStore';
 import { useReplayStore } from '../../stores/replayStore';
-import { useConfigStore } from '../../stores/configStore';
 
 const EDGE_W = 1.5;
 
 export const GraphRenderer: React.FC = () => {
   const data = useGraphStore(s => s.data);
   const layout = useGraphStore(s => s.layout);
-  const config = useConfigStore(s => s.config);
 
   const { showIds, showPrices, showDests, showAgents, mode, nodeSize, agentColors, animSpeed } = useUIStore();
   const NODE_R = nodeSize;
@@ -114,7 +112,7 @@ export const GraphRenderer: React.FC = () => {
           const owner = data.ownership[id] ?? data.ownership[String(id) as unknown as number];
           const hasOwner = owner !== undefined && owner >= 0;
           const color = hasOwner ? getColor(Number(owner)) : 'rgba(255,255,255,0.35)';
-          const price = displayPrices[String(id)] ?? (config?.agent?.initial_price ?? 5);
+          const price = displayPrices[String(id)] ?? 5.0;
           const isHover = hoverNode === id;
           const isBuildMode = mode !== 'view';
 
