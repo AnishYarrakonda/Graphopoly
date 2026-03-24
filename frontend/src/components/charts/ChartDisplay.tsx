@@ -47,25 +47,22 @@ export const ChartDisplay: React.FC = () => {
       <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <h3 style={{
-            fontSize: 14,
-            fontWeight: 700,
+            fontSize: 'var(--text-lg)',
+            fontWeight: 600,
             color: 'var(--color-text)',
-            fontFamily: "'Inter', sans-serif",
             margin: '0 0 4px 0',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
           }}>
             {chart.title}
           </h3>
-          <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-text-dim)', textTransform: 'uppercase' }}>
-            {chart.syncMode === 'atStep' ? `Current Step: ${params.currentStep}` : `Full Timeline: ${timeline.length} steps`}
+          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--color-text-dim)' }}>
+            {chart.syncMode === 'atStep' ? `Step ${params.currentStep}` : `Full timeline · ${timeline.length} steps`}
             {' · '}
-            {chart.chartType} visualization
+            {chart.chartType}
           </span>
         </div>
-        
-        <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--color-accent)', border: '1px solid var(--color-accent)', borderRadius: 4, padding: '2px 6px' }}>
-           PRO ANALYSIS
+
+        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-accent)', border: '1px solid var(--color-accent)', borderRadius: 'var(--radius-sm)', padding: '2px 8px' }}>
+           Analysis
         </div>
       </div>
 

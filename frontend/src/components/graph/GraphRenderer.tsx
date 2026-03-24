@@ -4,8 +4,6 @@ import { useUIStore } from '../../stores/uiStore';
 import { useTrainingStore } from '../../stores/trainingStore';
 import { useReplayStore } from '../../stores/replayStore';
 
-const EDGE_W = 1.5;
-
 export const GraphRenderer: React.FC = () => {
   const data = useGraphStore(s => s.data);
   const layout = useGraphStore(s => s.layout);
@@ -79,7 +77,7 @@ export const GraphRenderer: React.FC = () => {
   const nodesList = Array.from({ length: data.num_nodes }, (_, i) => i);
 
   const getPos = (id: number): [number, number] | null =>
-    layout[id] ?? layout[String(id) as unknown as number] ?? null;
+    layout[id] ?? layout[String(id) as any] ?? null;
 
   const getColor = (agentId: number) =>
     agentColors[agentId % agentColors.length] ?? '#888';
@@ -92,12 +90,15 @@ export const GraphRenderer: React.FC = () => {
           const s = getPos(e[0]);
           const t = getPos(e[1]);
           if (!s || !t) return null;
+          const isConnectedToHover = hoverNode !== null && (e[0] === hoverNode || e[1] === hoverNode);
           return (
             <line
               key={idx}
               x1={s[0]} y1={s[1]} x2={t[0]} y2={t[1]}
-              stroke="rgba(255,255,255,0.22)"
-              strokeWidth={EDGE_W}
+              stroke={isConnectedToHover ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.12)'}
+              strokeWidth={isConnectedToHover ? 2 : 1}
+              strokeLinecap="round"
+              style={{ transition: 'stroke 0.2s, stroke-width 0.2s' }}
             />
           );
         })}
@@ -109,9 +110,11 @@ export const GraphRenderer: React.FC = () => {
           const pos = getPos(id);
           if (!pos) return null;
 
-          const owner = data.ownership[id] ?? data.ownership[String(id) as unknown as number];
+          const owner = data.ownership?.[id] ?? data.ownership?.[String(id) as any];
           const hasOwner = owner !== undefined && owner >= 0;
-          const color = hasOwner ? getColor(Number(owner)) : 'rgba(255,255,255,0.35)';
+          const ownerIdx = hasOwner ? Number(owner) : -1;
+          const color = hasOwner ? getColor(ownerIdx) : 'rgba(255,255,255,0.35)';
+          const gradientFill = hasOwner ? `url(#nodeGradient-${ownerIdx})` : 'url(#nodeGradientDefault)';
           const price = displayPrices[String(id)] ?? 5.0;
           const isHover = hoverNode === id;
           const isBuildMode = mode !== 'view';
@@ -150,14 +153,51 @@ export const GraphRenderer: React.FC = () => {
                 />
               )}
 
+              {/* Shadow layer */}
+              <circle
+                r={NODE_R}
+                fill={gradientFill}
+                filter="url(#nodeShadow)"
+              />
+
               {/* Body */}
               <circle
                 r={NODE_R}
-                fill={hasOwner ? `${color}22` : 'rgba(255,255,255,0.06)'}
-                stroke={hasOwner ? color : 'rgba(255,255,255,0.2)'}
+                fill={gradientFill}
+                stroke={hasOwner ? color : 'rgba(255,255,255,0.12)'}
                 strokeWidth={1.5}
-                style={{ filter: isHover ? 'brightness(1.5)' : 'none', transition: 'filter 0.2s' }}
+                style={{ transition: 'stroke 0.2s' }}
               />
+
+              {/* Outer rim */}
+              <circle
+                r={NODE_R + 1.5}
+                fill="none"
+                stroke={hasOwner ? color : 'rgba(255,255,255,0.08)'}
+                strokeWidth={0.5}
+                opacity={0.3}
+              />
+
+              {/* Inner highlight */}
+              <circle
+                cx={-NODE_R * 0.2}
+                cy={-NODE_R * 0.25}
+                r={NODE_R * 0.35}
+                fill="rgba(255,255,255,0.06)"
+                pointerEvents="none"
+              />
+
+              {/* Hover selection ring */}
+              {isHover && (
+                <circle
+                  r={NODE_R + 8}
+                  fill="none"
+                  stroke={hasOwner ? color : 'rgba(255,255,255,0.3)'}
+                  strokeWidth={1}
+                  strokeDasharray="4 3"
+                  opacity={0.6}
+                />
+              )}
 
               {/* Node ID */}
               {showIds && (
@@ -181,11 +221,12 @@ export const GraphRenderer: React.FC = () => {
                   y={NODE_R + 18}
                   textAnchor="middle"
                   fill="rgba(255,255,255,0.65)"
-                  fontSize={15}
-                  fontFamily="'Inter', sans-serif"
+                  fontSize={13}
+                  fontFamily="var(--font-mono, 'JetBrains Mono', monospace)"
+                  fontWeight={500}
                   pointerEvents="none"
                 >
-                  ${price}
+                  ${Number(price).toFixed(1)}
                 </text>
               )}
 
@@ -242,13 +283,27 @@ export const GraphRenderer: React.FC = () => {
               }}
             >
               <circle
-                r={9}
+                r={11}
                 fill={color}
                 stroke="#fff"
                 strokeWidth={1.5}
                 opacity={0.97}
-                style={{ filter: `drop-shadow(0 0 6px ${color})` }}
+                filter="url(#agentGlow)"
+                className={isTraining ? 'agent-pulse' : ''}
               />
+              {/* Agent ID label */}
+              <text
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="#fff"
+                fontSize={9}
+                fontWeight={700}
+                fontFamily="var(--font-mono, 'JetBrains Mono', monospace)"
+                pointerEvents="none"
+                style={{ userSelect: 'none' }}
+              >
+                {agentId}
+              </text>
             </g>
           );
         })}

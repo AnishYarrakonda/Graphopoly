@@ -10,29 +10,38 @@ import { usePlayback } from './hooks/usePlayback';
 import { useSimulationPlayback } from './hooks/useSimulationPlayback';
 import { api } from './api/client';
 import { useConfigStore } from './stores/configStore';
+import { useUIStore } from './stores/uiStore';
+import { Activity, BarChart3 } from 'lucide-react';
 
 type TabID = 'live' | 'analysis';
 
 const TabButton: React.FC<{
   active: boolean;
   onClick: () => void;
+  icon: React.ReactNode;
   children: React.ReactNode;
-}> = ({ active, onClick, children }) => (
+}> = ({ active, onClick, icon, children }) => (
   <button
     onClick={onClick}
     style={{
-      padding: '14px 0',
-      background: 'none',
+      padding: '10px 16px',
+      background: active ? 'var(--color-accent-surface)' : 'none',
       border: 'none',
       borderBottom: active ? '2px solid var(--color-accent)' : '2px solid transparent',
       color: active ? 'var(--color-text)' : 'var(--color-text-dim)',
-      fontSize: 10,
-      fontWeight: 700,
-      letterSpacing: '0.15em',
+      fontSize: 12,
+      fontWeight: 500,
+      letterSpacing: '0.02em',
       cursor: 'pointer',
-      transition: 'all 0.2s',
+      transition: 'all var(--transition-base)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6,
     }}
+    onMouseEnter={e => { if (!active) e.currentTarget.style.color = 'var(--color-text-secondary)'; }}
+    onMouseLeave={e => { if (!active) e.currentTarget.style.color = 'var(--color-text-dim)'; }}
   >
+    {icon}
     {children}
   </button>
 );
@@ -42,14 +51,14 @@ export default function App() {
   usePlayback();
   useSimulationPlayback();
   const loadConfig = useConfigStore(s => s.loadConfig);
+  const isSidebarCollapsed = useUIStore(s => s.isSidebarCollapsed);
   const [activeTab, setActiveTab] = useState<TabID>('live');
-  const [bottomPanelHeight, setBottomPanelHeight] = useState(35); // vh
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(35);
 
   useEffect(() => {
     api.config.get().then(config => loadConfig(config)).catch(e => console.error('Config fetch failed', e));
   }, [loadConfig]);
 
-  // Handle panel resizing
   const startResizing = (mouseDownEvent: React.MouseEvent) => {
     const startY = mouseDownEvent.clientY;
     const startHeight = bottomPanelHeight;
@@ -72,10 +81,10 @@ export default function App() {
   return (
     <AppShell>
       <OnboardingOverlay />
-      
-      {/* ── SIDEBAR ─────────────────────────────────────── */}
+
+      {/* ── SIDEBAR ────────────────────────────────── */}
       <aside style={{
-        width: 'var(--sidebar-w)',
+        width: isSidebarCollapsed ? 'var(--sidebar-w-collapsed)' : 'var(--sidebar-w)',
         height: '100%',
         borderRight: '1px solid var(--color-border)',
         background: 'var(--color-bg-elevated)',
@@ -83,11 +92,12 @@ export default function App() {
         flexDirection: 'column',
         zIndex: 10,
         overflowY: 'auto',
+        transition: 'width var(--transition-slow)',
       }}>
         <SettingsPanel />
       </aside>
 
-      {/* ── MAIN CONTENT ─────────────────────────────────── */}
+      {/* ── MAIN CONTENT ──────────────────────────── */}
       <main style={{
         flex: 1,
         height: '100%',
@@ -107,18 +117,38 @@ export default function App() {
         </section>
 
         {/* DRAG HANDLE */}
-        <div 
+        <div
           onMouseDown={startResizing}
           style={{
-            height: '4px',
+            height: '6px',
             cursor: 'ns-resize',
-            background: 'var(--color-border)',
+            background: 'transparent',
             zIndex: 20,
-            transition: 'background 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--color-accent)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'var(--color-border)'}
-        />
+          onMouseEnter={e => {
+            const bar = e.currentTarget.querySelector('.drag-indicator') as HTMLElement;
+            if (bar) bar.style.background = 'var(--color-accent)';
+          }}
+          onMouseLeave={e => {
+            const bar = e.currentTarget.querySelector('.drag-indicator') as HTMLElement;
+            if (bar) bar.style.background = 'var(--color-text-muted)';
+          }}
+        >
+          <div
+            className="drag-indicator"
+            style={{
+              width: 32,
+              height: 3,
+              borderRadius: 2,
+              background: 'var(--color-text-muted)',
+              transition: 'background var(--transition-fast)',
+            }}
+          />
+        </div>
 
         {/* BOTTOM PANEL */}
         <section style={{
@@ -132,22 +162,24 @@ export default function App() {
           {/* TAB BAR */}
           <div style={{
             display: 'flex',
-            padding: '0 24px',
+            padding: '0 20px',
             borderBottom: '1px solid var(--color-border)',
             background: 'rgba(255,255,255,0.01)',
-            gap: 24,
+            gap: 4,
           }}>
-            <TabButton 
-              active={activeTab === 'live'} 
+            <TabButton
+              active={activeTab === 'live'}
               onClick={() => setActiveTab('live')}
+              icon={<Activity size={13} />}
             >
-              LIVE STATUS
+              Live Status
             </TabButton>
-            <TabButton 
-              active={activeTab === 'analysis'} 
+            <TabButton
+              active={activeTab === 'analysis'}
               onClick={() => setActiveTab('analysis')}
+              icon={<BarChart3 size={13} />}
             >
-              ANALYSIS & REPLAY
+              Analysis & Replay
             </TabButton>
           </div>
 

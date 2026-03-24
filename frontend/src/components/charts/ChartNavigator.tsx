@@ -30,10 +30,9 @@ export const ChartNavigator: React.FC = () => {
             style={{
               padding: '6px 14px',
               borderRadius: 20,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: '0.05em',
-              textTransform: 'uppercase',
+              fontSize: 'var(--text-sm)',
+              fontWeight: 600,
+              letterSpacing: '0.02em',
               background: activeCategory === cat.id ? 'var(--color-accent)' : 'rgba(255,255,255,0.03)',
               color: activeCategory === cat.id ? '#fff' : 'var(--color-text-dim)',
               border: activeCategory === cat.id ? '1px solid var(--color-accent)' : '1px solid var(--color-border)',
@@ -66,7 +65,7 @@ export const ChartNavigator: React.FC = () => {
               transition: 'all 0.2s',
             }}
           >
-            {chart.title.toUpperCase()}
+            {chart.title}
           </button>
         ))}
       </div>
@@ -75,7 +74,7 @@ export const ChartNavigator: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap' }}>
         {numAgents > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AGENTS</span>
+            <span className="text-label" style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>Agents</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {Array.from({ length: numAgents }, (_, i) => {
                 const id = String(i);
@@ -107,7 +106,7 @@ export const ChartNavigator: React.FC = () => {
 
         {numNodes > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-             <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>NODES</span>
+             <span className="text-label" style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>Nodes</span>
              <div style={{ display: 'flex', gap: 4, overflowX: 'auto', maxWidth: 400, scrollbarWidth: 'none' }}>
                {Array.from({ length: numNodes }, (_, i) => {
                  const id = String(i);

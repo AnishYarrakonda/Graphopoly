@@ -5,11 +5,25 @@ import { useGraphStore } from '../../stores/graphStore';
 import { useConfigStore } from '../../stores/configStore';
 import { useUIStore } from '../../stores/uiStore';
 import { AGENT_COLORS } from '../../lib/chartTheme';
+import { Activity } from 'lucide-react';
 
 const StatPill: React.FC<{ label: string; value: number | string; color?: string }> = ({ label, value, color }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-    <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
-    <span style={{ fontSize: 13, fontWeight: 600, color: color || 'var(--color-text)', fontVariantNumeric: 'tabular-nums' }}>
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    padding: '6px 8px',
+    background: 'rgba(255,255,255,0.02)',
+    borderRadius: 'var(--radius-sm)',
+  }}>
+    <span className="text-label" style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>{label}</span>
+    <span style={{
+      fontSize: 14,
+      fontWeight: 600,
+      color: color || 'var(--color-text)',
+      fontFamily: 'var(--font-mono)',
+      fontVariantNumeric: 'tabular-nums',
+    }}>
       {typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(1)) : value}
     </span>
   </div>
@@ -33,21 +47,22 @@ export const LiveStatsPanel: React.FC = () => {
     return (
       <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.3 }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>NO ACTIVE LIVE DATA</div>
-          <div style={{ fontSize: 11 }}>Start a simulation to see real-time agent metrics</div>
+          <Activity size={28} style={{ marginBottom: 8, opacity: 0.5 }} />
+          <div style={{ fontSize: 'var(--text-md)', fontWeight: 500, marginBottom: 4 }}>No Active Live Data</div>
+          <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>Start a simulation to see real-time agent metrics</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* ── AGENT CARDS GRID (HORIZONTAL) ────────────────── */}
-      <div style={{ 
-        display: 'flex', 
-        gap: 12, 
-        overflowX: 'auto', 
-        paddingBottom: 8,
+      <div style={{
+        display: 'flex',
+        gap: 10,
+        overflowX: 'auto',
+        paddingBottom: 4,
         scrollbarWidth: 'none',
       }}>
         {Array.from({ length: numAgentsDisplay }, (_, i) => {
@@ -62,33 +77,42 @@ export const LiveStatsPanel: React.FC = () => {
           const taxPaid = detail?.tax_paid ?? replayStats?.tax_paid ?? 0;
           const destRev = detail?.dest_revenue ?? replayStats?.dest_revenue ?? 0;
 
+          const isProfitable = reward >= 0;
+
           return (
             <div key={i} style={{
-              minWidth: 260,
+              minWidth: 250,
               background: 'var(--color-bg-elevated)',
               border: '1px solid var(--color-border)',
               borderRadius: 'var(--radius-card)',
-              padding: '16px',
-              borderTop: `4px solid ${color}`,
-              boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              padding: '14px 16px',
+              borderLeft: `3px solid ${color}`,
+              boxShadow: 'var(--shadow-card)',
               display: 'flex',
               flexDirection: 'column',
-              gap: 16,
+              gap: 12,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color }}>AGENT {i}</span>
-                <div style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', background: 'rgba(255,255,255,0.05)', borderRadius: 4, color: 'var(--color-text-dim)' }}>
-                   {reward >= 0 ? 'PROFIT' : 'LOSS'}
+                <span style={{ fontSize: 'var(--text-md)', fontWeight: 600, color }}>Agent {i}</span>
+                <div style={{
+                  fontSize: 'var(--text-xs)',
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  background: isProfitable ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                  borderRadius: 'var(--radius-sm)',
+                  color: isProfitable ? 'var(--color-success)' : 'var(--color-danger)',
+                }}>
+                  {isProfitable ? 'Profit' : 'Loss'}
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px 16px' }}>
-                <StatPill label="NET REWARD" value={reward} color={reward >= 0 ? 'var(--color-success)' : 'var(--color-danger)'} />
-                <StatPill label="TRIPS" value={trips} />
-                <StatPill label="DEST REV" value={destRev} />
-                <StatPill label="TAX REV" value={taxRev} />
-                <StatPill label="TAX PAID" value={taxPaid} />
-                <StatPill label="AVG/STEP" value={displayStep > 0 ? (reward / (displayStep + 1)) : 0} />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 12px' }}>
+                <StatPill label="Net Reward" value={reward} color={isProfitable ? 'var(--color-success)' : 'var(--color-danger)'} />
+                <StatPill label="Trips" value={trips} />
+                <StatPill label="Dest Rev" value={destRev} />
+                <StatPill label="Tax Rev" value={taxRev} />
+                <StatPill label="Tax Paid" value={taxPaid} />
+                <StatPill label="Avg/Step" value={displayStep > 0 ? (reward / (displayStep + 1)) : 0} />
               </div>
             </div>
           );
@@ -96,40 +120,37 @@ export const LiveStatsPanel: React.FC = () => {
       </div>
 
       {/* ── SYSTEM OVERVIEW ─────────────────────────────── */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 32, 
-        padding: '12px 20px', 
-        background: 'rgba(255,255,255,0.02)', 
-        borderRadius: 8,
-        border: '1px solid var(--color-border)'
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 24,
+        padding: '10px 16px',
+        background: 'rgba(255,255,255,0.02)',
+        borderRadius: 'var(--radius-card)',
+        border: '1px solid var(--color-border)',
       }}>
-        <div style={{ display: 'flex', gap: 24 }}>
-          <StatPill label="STEP" value={displayStep} />
-          <StatPill label="COMPLETIONS" value={isLive ? (liveStep?.dest_completions?.length ?? 0) : (replayTrajectoryStep?.dest_completions?.length ?? 0)} />
-          <StatPill label="ACTIVE AGENTS" value={numAgentsDisplay} />
+        <div style={{ display: 'flex', gap: 20 }}>
+          <StatPill label="Step" value={displayStep} />
+          <StatPill label="Completions" value={isLive ? (liveStep?.dest_completions?.length ?? 0) : (replayTrajectoryStep?.dest_completions?.length ?? 0)} />
+          <StatPill label="Agents" value={numAgentsDisplay} />
         </div>
-        
+
         <div style={{ height: 24, width: 1, background: 'var(--color-border)' }} />
 
-        <div style={{ flex: 1, display: 'flex', gap: 24, overflowX: 'auto' }}>
-           {/* Quick Node Price Ticker */}
-           <div style={{ display: 'flex', gap: 16 }}>
-             <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--color-text-dim)', alignSelf: 'center' }}>LIVE PRICES:</span>
-             {Array.from({ length: Math.min(graphData?.num_nodes ?? 0, 10) }, (_, i) => {
-               const price = isLive ? (liveStep?.prices?.[String(i)] ?? currentPrices?.[String(i)] ?? 0) : (replayTrajectoryStep?.prices?.[String(i)] ?? 0);
-               const owner = graphData?.ownership?.[i] ?? -1;
-               const color = owner >= 0 ? (agentColors[owner % agentColors.length] ?? AGENT_COLORS[owner % AGENT_COLORS.length]) : 'var(--color-text-dim)';
-               return (
-                 <div key={i} style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                   <span style={{ fontSize: 10, fontWeight: 700, color }}>N{i}</span>
-                   <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text)' }}>${Number(price).toFixed(1)}</span>
-                 </div>
-               );
-             })}
-             {(graphData?.num_nodes ?? 0) > 10 && <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>...</span>}
-           </div>
+        <div style={{ flex: 1, display: 'flex', gap: 16, overflowX: 'auto', alignItems: 'center' }}>
+          <span className="text-label" style={{ flexShrink: 0 }}>Prices</span>
+          {Array.from({ length: Math.min(graphData?.num_nodes ?? 0, 10) }, (_, i) => {
+            const price = isLive ? (liveStep?.prices?.[String(i)] ?? currentPrices?.[String(i)] ?? 0) : (replayTrajectoryStep?.prices?.[String(i)] ?? 0);
+            const owner = graphData?.ownership?.[i] ?? -1;
+            const color = owner >= 0 ? (agentColors[owner % agentColors.length] ?? AGENT_COLORS[owner % AGENT_COLORS.length]) : 'var(--color-text-dim)';
+            return (
+              <div key={i} style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color }}>N{i}</span>
+                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>${Number(price).toFixed(1)}</span>
+              </div>
+            );
+          })}
+          {(graphData?.num_nodes ?? 0) > 10 && <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-dim)' }}>...</span>}
         </div>
       </div>
     </div>

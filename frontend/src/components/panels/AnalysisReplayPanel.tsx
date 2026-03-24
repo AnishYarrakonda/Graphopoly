@@ -14,7 +14,7 @@ import type { BuildParams } from '../../lib/chartRegistry';
 
 const EmptyState = ({ message }: { message: string }) => (
   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.3 }}>
-    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em' }}>{message.toUpperCase()}</div>
+    <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text-dim)' }}>{message}</div>
   </div>
 );
 
@@ -88,7 +88,7 @@ export const AnalysisReplayPanel: React.FC = () => {
               min={0}
               max={totalSteps > 0 ? totalSteps - 1 : 0}
               onChange={setStep}
-              label={`STEP ${currentStep}`}
+              label={`Step ${currentStep}`}
               formatValue={() => `/ ${totalSteps - 1}`}
             />
           )}
@@ -115,7 +115,7 @@ export const AnalysisReplayPanel: React.FC = () => {
         <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
              {hasCharts && (
                <Button onClick={handleDownloadAll} disabled={isDownloading} variant="secondary" style={{ fontSize: 10, padding: '8px 16px', gap: 8 }}>
-                 <Download size={14} /> {isDownloading ? 'EXPORTING...' : 'EXPORT CSV'}
+                 <Download size={14} /> {isDownloading ? 'Exporting...' : 'Export CSV'}
                </Button>
              )}
         </div>

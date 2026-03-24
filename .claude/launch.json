@@ -3,13 +3,13 @@
   "configurations": [
     {
       "name": "frontend",
-      "runtimeExecutable": "/Users/anish_1/.local/bin/node",
+      "runtimeExecutable": "/Users/anish/.nvm/versions/node/v22.22.1/bin/node",
       "runtimeArgs": ["node_modules/.bin/vite"],
       "port": 5173,
       "autoPort": false,
       "cwd": "frontend",
       "env": {
-        "PATH": "/Users/anish_1/.local/bin:/usr/local/bin:/usr/bin:/bin"
+        "PATH": "/Users/anish/.nvm/versions/node/v22.22.1/bin:/usr/local/bin:/usr/bin:/bin"
       }
     },
     {

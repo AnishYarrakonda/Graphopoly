@@ -17,6 +17,7 @@ export const GraphCanvas: React.FC = () => {
 
   const mode = useUIStore(s => s.mode);
   const selectedAgent = useUIStore(s => s.selectedAgent);
+  const agentColors = useUIStore(s => s.agentColors);
 
   const { data, layout, addNode, addEdge, setOwner, toggleDestination, updateNodePosition, setLayout } = useGraphStore();
   const isTraining = useTrainingStore(s => s.isTraining);
@@ -24,7 +25,6 @@ export const GraphCanvas: React.FC = () => {
   const storeSetPaused   = useTrainingStore(s => s.pauseTraining);
   const storeSetResumed  = useTrainingStore(s => s.resumeTraining);
   const pausedForDragRef = useRef(false);
-
 
   const edgeSourceRef = useRef<number | null>(null);
   const dragNodeRef = useRef<number | null>(null);
@@ -41,9 +41,9 @@ export const GraphCanvas: React.FC = () => {
         setTransform(e.transform);
       })
       .filter((event) => {
-        if (event.type === 'wheel') return false; 
+        if (event.type === 'wheel') return false;
         if (event.type === 'mousedown' || event.type === 'pointerdown' || event.type === 'touchstart') {
-          if (mode !== 'view') return false; 
+          if (mode !== 'view') return false;
           const tag = (event.target as Element).tagName;
           if (tag !== 'rect' && tag !== 'svg') return false;
           return event.button === 0;
@@ -187,28 +187,39 @@ export const GraphCanvas: React.FC = () => {
     }
   }, [mode, data, addNode, addEdge, setOwner, toggleDestination, selectedAgent, screenToGraph, findNearestNode]);
 
+  // Helper to convert hex to rgb components for SVG gradients
+  const hexToRgb = (hex: string) => {
+    const h = hex.replace('#', '');
+    return {
+      r: parseInt(h.substring(0, 2), 16),
+      g: parseInt(h.substring(2, 4), 16),
+      b: parseInt(h.substring(4, 6), 16),
+    };
+  };
+
   return (
     <div ref={wrapperRef} style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
-      
-      {/* Zoom Controls Pill (Top Middle) */}
-      <div style={{ 
-        position: 'absolute', 
-        top: 24, 
-        left: '50%', 
-        transform: 'translateX(-50%)', 
+
+      {/* Zoom Controls Pill */}
+      <div style={{
+        position: 'absolute',
+        top: 20,
+        left: '50%',
+        transform: 'translateX(-50%)',
         zIndex: 10,
         display: 'flex',
         alignItems: 'center',
         gap: 2,
         background: 'var(--color-bg-elevated)',
+        backdropFilter: 'blur(8px)',
         border: '1px solid var(--color-border)',
-        borderRadius: 24,
+        borderRadius: 'var(--radius-pill)',
         padding: '4px 14px',
         boxShadow: 'var(--shadow-elevated)',
       }}>
         <button onClick={zoomOut} title="Zoom Out" style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: '6px 8px', display: 'flex' }}><Minus size={14} /></button>
-        <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--color-text)', minWidth: 42, textAlign: 'center', letterSpacing: '0.05em' }}>
-            {Math.round(transform.k * 100)}%
+        <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text)', minWidth: 42, textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+          {Math.round(transform.k * 100)}%
         </div>
         <button onClick={zoomIn} title="Zoom In" style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: '6px 8px', display: 'flex' }}><Plus size={14} /></button>
         <div style={{ height: 12, width: 1, background: 'var(--color-border)', margin: '0 10px' }} />
@@ -217,19 +228,27 @@ export const GraphCanvas: React.FC = () => {
 
       {/* Mode Banner */}
       {mode !== 'view' && (
-        <div style={{ 
-          position: 'absolute', top: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
-          background: 'var(--color-accent)', color: '#fff', padding: '6px 14px', borderRadius: 4,
-          fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', boxShadow: '0 4px 12px var(--color-accent-glow)'
+        <div style={{
+          position: 'absolute', top: 72, left: '50%', transform: 'translateX(-50%)', zIndex: 10,
+          background: 'var(--color-bg-elevated)',
+          borderLeft: '3px solid var(--color-accent)',
+          color: 'var(--color-text)',
+          padding: '6px 14px',
+          borderRadius: 'var(--radius-sm)',
+          fontSize: 'var(--text-sm)',
+          fontWeight: 500,
+          boxShadow: 'var(--shadow-elevated)',
+          display: 'flex', alignItems: 'center', gap: 6,
         }}>
-          {mode.replace('build_', '').toUpperCase()} MODE ACTIVE 
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-accent)' }} />
+          {mode.replace('build_', '').charAt(0).toUpperCase() + mode.replace('build_', '').slice(1)} Mode
         </div>
       )}
 
       {/* Bottom Actions */}
-      <div style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 10 }}>
-        <Button onClick={normalizeGraph} variant="secondary" style={{ padding: '8px 16px', fontSize: 10, fontWeight: 700, borderRadius: 24, gap: 8 }}>
-          <RefreshCw size={13} /> NORMALIZE
+      <div style={{ position: 'absolute', bottom: 20, right: 20, zIndex: 10 }}>
+        <Button onClick={normalizeGraph} variant="secondary" style={{ padding: '8px 14px', fontSize: 'var(--text-sm)', borderRadius: 'var(--radius-pill)', gap: 6 }}>
+          <RefreshCw size={13} /> Normalize
         </Button>
       </div>
 
@@ -241,11 +260,55 @@ export const GraphCanvas: React.FC = () => {
         onMouseLeave={handleMouseUp}
       >
         <defs>
+          {/* Dot grid pattern */}
           <pattern id="dotgrid" width="32" height="32" patternUnits="userSpaceOnUse">
-            <circle cx="16" cy="16" r="0.8" fill="rgba(255,255,255,0.06)" />
+            <circle cx="16" cy="16" r="1" fill="rgba(255,255,255,0.04)" />
           </pattern>
+
+          {/* Node shadow filter */}
+          <filter id="nodeShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="rgba(0,0,0,0.4)" />
+          </filter>
+
+          {/* Agent glow filter */}
+          <filter id="agentGlow" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+
+          {/* Default node gradient (unowned) */}
+          <radialGradient id="nodeGradientDefault" cx="35%" cy="35%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.10)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.03)" />
+          </radialGradient>
+
+          {/* Per-agent node gradients */}
+          {agentColors.map((color, i) => {
+            const { r, g, b } = hexToRgb(color);
+            return (
+              <radialGradient key={`nodeGrad-${i}`} id={`nodeGradient-${i}`} cx="35%" cy="35%">
+                <stop offset="0%" stopColor={`rgba(${r},${g},${b},0.20)`} />
+                <stop offset="70%" stopColor={`rgba(${r},${g},${b},0.10)`} />
+                <stop offset="100%" stopColor={`rgba(${r},${g},${b},0.04)`} />
+              </radialGradient>
+            );
+          })}
+
+          {/* Vignette gradient */}
+          <radialGradient id="vignette" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="transparent" />
+            <stop offset="80%" stopColor="transparent" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.25)" />
+          </radialGradient>
         </defs>
+
+        {/* Background layers */}
         <rect width="100%" height="100%" fill="url(#dotgrid)" />
+        <rect width="100%" height="100%" fill="url(#vignette)" />
+
         <g transform={transform.toString()}>
           <GraphRenderer />
         </g>

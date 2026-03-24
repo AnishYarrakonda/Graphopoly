@@ -1,12 +1,9 @@
 import { create } from 'zustand';
+import { AGENT_COLORS } from '../lib/chartTheme';
 
 export type UIMode = 'view' | 'build_node' | 'build_edge' | 'build_owner' | 'build_dest';
 
-export const DEFAULT_AGENT_COLORS = [
-  "#4e79a7","#f28e2b","#e15759","#76b7b2",
-  "#59a14f","#edc948","#b07aa1","#ff9da7",
-  "#9c755f","#bab0ac",
-];
+export const DEFAULT_AGENT_COLORS = AGENT_COLORS;
 
 interface UIState {
   // Visuals (toggles)
@@ -29,6 +26,9 @@ interface UIState {
   selectedAgent: string | null;
   selectedNode: string | null;
 
+  // Sidebar
+  isSidebarCollapsed: boolean;
+
   // Actions
   toggleShowIds: () => void;
   toggleShowPrices: () => void;
@@ -41,6 +41,7 @@ interface UIState {
   setMode: (mode: UIMode) => void;
   setSelectedAgent: (agentId: string | null) => void;
   setSelectedNode: (nodeId: string | null) => void;
+  toggleSidebar: () => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -54,6 +55,7 @@ export const useUIStore = create<UIState>((set) => ({
   mode: 'view',
   selectedAgent: null,
   selectedNode: null,
+  isSidebarCollapsed: false,
 
   toggleShowIds: () => set((state) => ({ showIds: !state.showIds })),
   toggleShowPrices: () => set((state) => ({ showPrices: !state.showPrices })),
@@ -71,4 +73,5 @@ export const useUIStore = create<UIState>((set) => ({
   setMode: (mode) => set({ mode }),
   setSelectedAgent: (agentId) => set({ selectedAgent: agentId }),
   setSelectedNode: (nodeId) => set({ selectedNode: nodeId }),
+  toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
 }));

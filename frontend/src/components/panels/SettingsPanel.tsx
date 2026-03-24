@@ -4,55 +4,12 @@ import { useTrainingStore } from '../../stores/trainingStore';
 import { useUIStore, DEFAULT_AGENT_COLORS, UIMode } from '../../stores/uiStore';
 import { useConfigStore } from '../../stores/configStore';
 import { api } from '../../api/client';
-import { 
-  Play, Pause, Square, ChevronDown, ChevronRight, 
-  Layout, Activity, Gauge, FlaskConical, 
-  MousePointer2, CircleDashed, Spline, User, MapPin, Trash2 
+import {
+  Play, Pause, Square, Layout, Activity, Gauge, FlaskConical,
+  MousePointer2, CircleDashed, Spline, User, MapPin, Trash2,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
-import { Stepper, NumberInput, Button, Toggle, ColorPicker } from '../shared';
-
-const Accordion: React.FC<{ 
-  title: string; 
-  icon: React.ReactNode;
-  children: React.ReactNode; 
-  defaultOpen?: boolean;
-}> = ({ title, icon, children, defaultOpen = false }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-  return (
-    <div style={{ borderBottom: '1px solid var(--color-border)' }}>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          width: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px 20px',
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          color: 'var(--color-text)',
-          transition: 'background 0.2s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'none'}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ color: isOpen ? 'var(--color-accent)' : 'var(--color-text-dim)', transition: 'color 0.2s' }}>{icon}</span>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: isOpen ? 'var(--color-text)' : 'var(--color-text-dim)' }}>
-            {title}
-          </span>
-        </div>
-        {isOpen ? <ChevronDown size={14} color="var(--color-text-dim)" /> : <ChevronRight size={14} color="var(--color-text-dim)" />}
-      </button>
-      {isOpen && (
-        <div style={{ padding: '4px 20px 24px 20px' }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-};
+import { Accordion, Stepper, NumberInput, Button, Toggle, ColorPicker } from '../shared';
 
 export const SettingsPanel: React.FC = () => {
   const loadGraph = useGraphStore(s => s.loadGraph);
@@ -66,7 +23,6 @@ export const SettingsPanel: React.FC = () => {
     resumeTraining: storeSetResumed,
   } = useTrainingStore();
   const config = useConfigStore(s => s.config);
-
   const updateConfig = useConfigStore(s => s.updateConfig);
   const loadConfig = useConfigStore(s => s.loadConfig);
 
@@ -78,6 +34,7 @@ export const SettingsPanel: React.FC = () => {
     toggleShowIds, toggleShowPrices, toggleShowDests, toggleShowAgents,
     setNodeSize, setAgentColor, resetAgentColors,
     setAnimSpeed,
+    isSidebarCollapsed, toggleSidebar,
   } = useUIStore();
 
   const [numNodes, setNumNodes] = useState(8);
@@ -103,7 +60,9 @@ export const SettingsPanel: React.FC = () => {
       try {
         await api.config.update({ agent: patch });
         updateConfig({ agent: { ...config?.agent, ...patch } as any });
-      } catch { }
+      } catch (e) {
+        console.error('Config update failed:', e);
+      }
     }, 300);
   };
 
@@ -127,7 +86,7 @@ export const SettingsPanel: React.FC = () => {
     setNumAgents(val);
     api.config.update({ agent: { num_agents: val } })
       .then(res => { if (res.config) loadConfig(res.config); })
-      .catch(() => { });
+      .catch((e: unknown) => console.error('Agent count update failed:', e));
   };
 
   const handleRandom = async () => {
@@ -142,8 +101,8 @@ export const SettingsPanel: React.FC = () => {
       });
       loadGraph(res.graph, res.layout);
       useTrainingStore.getState().resetEpisodeData();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to generate graph');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to generate graph');
     }
   };
 
@@ -166,8 +125,8 @@ export const SettingsPanel: React.FC = () => {
         await api.graph.syncLayout(layoutForApi);
       }
       await api.simulate.start();
-    } catch (e: any) {
-      setError(e?.message || 'Failed to start simulation');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to start simulation');
     }
   };
 
@@ -176,153 +135,291 @@ export const SettingsPanel: React.FC = () => {
   const resumeTraining = async () => { await api.train.resume().catch(console.error); storeSetResumed(); };
 
   const buildTools: { m: UIMode; icon: React.ReactNode; label: string }[] = [
-    { m: 'view', icon: <MousePointer2 size={14} />, label: 'Pointer' },
-    { m: 'build_node', icon: <CircleDashed size={14} />, label: 'Node' },
-    { m: 'build_edge', icon: <Spline size={14} />, label: 'Edge' },
-    { m: 'build_owner', icon: <User size={14} />, label: 'Owner' },
-    { m: 'build_dest', icon: <MapPin size={14} />, label: 'Dest' },
+    { m: 'view', icon: <MousePointer2 size={15} />, label: 'Pointer' },
+    { m: 'build_node', icon: <CircleDashed size={15} />, label: 'Add Node' },
+    { m: 'build_edge', icon: <Spline size={15} />, label: 'Add Edge' },
+    { m: 'build_owner', icon: <User size={15} />, label: 'Set Owner' },
+    { m: 'build_dest', icon: <MapPin size={15} />, label: 'Set Dest' },
   ];
+
+  // Collapsed sidebar: show only icons
+  if (isSidebarCollapsed) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'center', padding: '12px 0', gap: 4 }}>
+        <button
+          onClick={toggleSidebar}
+          title="Expand sidebar"
+          style={{
+            width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer',
+            borderRadius: 'var(--radius-btn)', marginBottom: 8,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--color-text)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--color-text-dim)'; }}
+        >
+          <PanelLeftOpen size={16} />
+        </button>
+
+        {/* Build tools as vertical icons */}
+        {buildTools.map(t => (
+          <button
+            key={t.m}
+            title={t.label}
+            onClick={() => setMode(t.m)}
+            disabled={isTraining && t.m !== 'view'}
+            style={{
+              width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: mode === t.m ? 'var(--color-accent-surface)' : 'none',
+              border: mode === t.m ? '1px solid rgba(129,140,248,0.2)' : '1px solid transparent',
+              color: mode === t.m ? 'var(--color-accent)' : 'var(--color-text-dim)',
+              cursor: isTraining && t.m !== 'view' ? 'not-allowed' : 'pointer',
+              borderRadius: 'var(--radius-btn)',
+              opacity: isTraining && t.m !== 'view' ? 0.35 : 1,
+              transition: 'all var(--transition-fast)',
+            }}
+          >
+            {t.icon}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      
-      {/* ── SESSION CONTROL ────────────────────────────────── */}
-      <div style={{ padding: '24px 20px', borderBottom: '1px solid var(--color-border)', background: 'rgba(99, 102, 241, 0.03)' }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+
+      {/* ── SESSION CONTROL ──────────────────────────── */}
+      <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-accent-surface)' }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: error ? 12 : 0 }}>
           {isTraining ? (
             <>
               {isPaused ? (
                 <Button variant="primary" onClick={resumeTraining} style={{ flex: 1, height: 36 }}>
-                  <Play size={14} fill="currentColor" /> RESUME
+                  <Play size={14} fill="currentColor" /> Resume
                 </Button>
               ) : (
                 <Button variant="warning" onClick={pauseTraining} style={{ flex: 1, height: 36 }}>
-                  <Pause size={14} fill="currentColor" /> PAUSE
+                  <Pause size={14} fill="currentColor" /> Pause
                 </Button>
               )}
               <Button variant="danger" onClick={stopTraining} style={{ flex: 1, height: 36 }}>
-                <Square size={14} fill="currentColor" /> STOP
+                <Square size={14} fill="currentColor" /> Stop
               </Button>
             </>
           ) : (
-            <Button variant="primary" onClick={startSimulation} disabled={!graphData} style={{ width: '100%', height: 42 }}>
-              <Play size={16} fill="currentColor" /> START SIMULATION
+            <Button
+              variant="primary"
+              onClick={startSimulation}
+              disabled={!graphData}
+              style={{
+                width: '100%',
+                height: 42,
+                animation: graphData && !isTraining ? 'subtle-pulse 2s infinite' : 'none',
+              }}
+            >
+              <Play size={15} fill="currentColor" /> Start Simulation
             </Button>
           )}
         </div>
-        {error && <div style={{ color: 'var(--color-danger)', fontSize: 10, fontWeight: 700, textAlign: 'center' }}>{error.toUpperCase()}</div>}
+        {error && (
+          <div style={{
+            color: 'var(--color-danger)',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 600,
+            textAlign: 'center',
+          }}>
+            {error}
+          </div>
+        )}
       </div>
 
-      {/* ── BUILD TOOLS ───────────────────────────────────── */}
-      <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.01)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {buildTools.map(t => (
-            <Button 
-              key={t.m} 
-              variant={mode === t.m ? 'primary' : 'secondary'} 
-              onClick={() => setMode(t.m)}
-              disabled={isTraining && t.m !== 'view'}
-              style={{ height: 32, fontSize: 9, padding: 0, gap: 6 }}
-            >
-              {t.icon} {t.label.toUpperCase()}
-            </Button>
-          ))}
-          <Button 
-            variant="danger" 
-            onClick={() => { if(window.confirm('Clear all graph data?')) clearAll(); }}
-            disabled={isTraining}
-            style={{ height: 32, fontSize: 9, padding: 0, gap: 6, gridColumn: 'span 2' }}
+      {/* ── BUILD TOOLS (icon toolbar) ───────────────── */}
+      <div style={{
+        padding: '12px 20px',
+        borderBottom: '1px solid var(--color-border)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 4,
+      }}>
+        {buildTools.map(t => (
+          <button
+            key={t.m}
+            title={t.label}
+            onClick={() => setMode(t.m)}
+            disabled={isTraining && t.m !== 'view'}
+            style={{
+              width: 36,
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: mode === t.m ? 'var(--color-accent-surface)' : 'transparent',
+              border: mode === t.m ? '1px solid rgba(129,140,248,0.2)' : '1px solid transparent',
+              color: mode === t.m ? 'var(--color-accent)' : 'var(--color-text-dim)',
+              cursor: isTraining && t.m !== 'view' ? 'not-allowed' : 'pointer',
+              borderRadius: 'var(--radius-btn)',
+              opacity: isTraining && t.m !== 'view' ? 0.35 : 1,
+              transition: 'all var(--transition-fast)',
+            }}
+            onMouseEnter={e => {
+              if (mode !== t.m && !(isTraining && t.m !== 'view'))
+                e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+            }}
+            onMouseLeave={e => {
+              if (mode !== t.m)
+                e.currentTarget.style.background = 'transparent';
+            }}
           >
-            <Trash2 size={13} /> CLEAR CANVAS
-          </Button>
-        </div>
+            {t.icon}
+          </button>
+        ))}
+
+        <div style={{ flex: 1 }} />
+
+        <button
+          title="Clear canvas"
+          onClick={() => { if (window.confirm('Clear all graph data?')) clearAll(); }}
+          disabled={isTraining}
+          style={{
+            width: 36, height: 36,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent',
+            border: '1px solid transparent',
+            color: 'var(--color-text-dim)',
+            cursor: isTraining ? 'not-allowed' : 'pointer',
+            borderRadius: 'var(--radius-btn)',
+            opacity: isTraining ? 0.35 : 1,
+            transition: 'all var(--transition-fast)',
+          }}
+          onMouseEnter={e => { if (!isTraining) { e.currentTarget.style.color = 'var(--color-danger)'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-dim)'; e.currentTarget.style.background = 'transparent'; }}
+        >
+          <Trash2 size={15} />
+        </button>
       </div>
 
-      {/* ── SECTIONS ─────────────────────────────────────── */}
+      {/* ── ACCORDION SECTIONS ───────────────────────── */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <Accordion title="Graph Generator" icon={<Layout size={16} />} defaultOpen={!isTraining}>
+        <Accordion title="Graph Generator" icon={<Layout size={15} />} defaultOpen={!isTraining}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 4 }}>
             <Stepper label="Nodes" value={numNodes} onChange={setNumNodes} min={2} max={50} />
             <NumberInput label="Edges" value={numEdges} onChangeValue={setNumEdges} placeholder="Auto" />
             <Stepper label="Agents" value={numAgents} onChange={handleNumAgentsChange} min={1} max={10} />
             <Stepper label="Avg Dests" value={numDests} onChange={setNumDests} min={1} max={8} />
           </div>
-          <Button variant="secondary" onClick={handleRandom} disabled={isTraining} style={{ width: '100%', marginTop: 24, height: 32 }}>
-            GENERATE RANDOM
+          <Button
+            variant="secondary"
+            onClick={handleRandom}
+            disabled={isTraining}
+            data-tour="generate-btn"
+            style={{ width: '100%', marginTop: 20, height: 34 }}
+          >
+            Generate Random
           </Button>
         </Accordion>
 
-        <Accordion title="Simulation Config" icon={<Activity size={16} />} defaultOpen={isTraining}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 8 }}>
+        <Accordion title="Simulation Config" icon={<Activity size={15} />} defaultOpen={isTraining}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 4 }}>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 9, fontWeight: 800, color: 'var(--color-text-dim)' }}>
-                <span>PRICE BUDGET</span>
-                <span style={{ color: 'var(--color-text)' }}>${priceBudget}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span className="text-label">Price Budget</span>
+                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>${priceBudget}</span>
               </div>
               <input type="range" className="range-slider" min={20} max={500} step={10} value={priceBudget} onChange={e => handlePriceBudget(Number(e.target.value))} disabled={isTraining} style={{ width: '100%' }} />
             </div>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 9, fontWeight: 800, color: 'var(--color-text-dim)' }}>
-                <span>TRIP REWARD</span>
-                <span style={{ color: 'var(--color-text)' }}>+{tripReward}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span className="text-label">Trip Reward</span>
+                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>+{tripReward}</span>
               </div>
               <input type="range" className="range-slider" min={5} max={100} step={5} value={tripReward} onChange={e => handleTripReward(Number(e.target.value))} disabled={isTraining} style={{ width: '100%' }} />
             </div>
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 9, fontWeight: 800, color: 'var(--color-text-dim)' }}>
-                <span>ANIMATION DELAY</span>
-                <span style={{ color: animSpeed === 0 ? 'var(--color-success)' : 'var(--color-text)' }}>{animSpeed === 0 ? 'TURBO' : `${animSpeed}MS`}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span className="text-label">Animation Delay</span>
+                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: animSpeed === 0 ? 'var(--color-success)' : 'var(--color-text)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{animSpeed === 0 ? 'Turbo' : `${animSpeed}ms`}</span>
               </div>
               <input type="range" className="range-slider" min={0} max={1000} step={50} value={animSpeed} onChange={e => setAnimSpeed(Number(e.target.value))} style={{ width: '100%' }} />
             </div>
           </div>
         </Accordion>
 
-        <Accordion title="Display Toggles" icon={<Gauge size={16} />}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px', marginTop: 8 }}>
+        <Accordion title="Display Toggles" icon={<Gauge size={15} />}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 16px', marginTop: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: showIds ? 'var(--color-text)' : 'var(--color-text-dim)' }}>IDs</span>
+              <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: showIds ? 'var(--color-text)' : 'var(--color-text-dim)' }}>IDs</span>
               <Toggle checked={showIds} onChange={toggleShowIds} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: showPrices ? 'var(--color-text)' : 'var(--color-text-dim)' }}>Prices</span>
+              <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: showPrices ? 'var(--color-text)' : 'var(--color-text-dim)' }}>Prices</span>
               <Toggle checked={showPrices} onChange={toggleShowPrices} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: showDests ? 'var(--color-text)' : 'var(--color-text-dim)' }}>Dests</span>
+              <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: showDests ? 'var(--color-text)' : 'var(--color-text-dim)' }}>Dests</span>
               <Toggle checked={showDests} onChange={toggleShowDests} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: showAgents ? 'var(--color-text)' : 'var(--color-text-dim)' }}>Agents</span>
+              <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: showAgents ? 'var(--color-text)' : 'var(--color-text-dim)' }}>Agents</span>
               <Toggle checked={showAgents} onChange={toggleShowAgents} />
             </div>
           </div>
-          <div style={{ marginTop: 32 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 9, fontWeight: 800, color: 'var(--color-text-dim)' }}>
-              <span>NODE SIZE</span>
-              <span style={{ color: 'var(--color-text)' }}>{nodeSize}PX</span>
+          <div style={{ marginTop: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span className="text-label">Node Size</span>
+              <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', fontFamily: 'var(--font-mono)' }}>{nodeSize}px</span>
             </div>
             <input type="range" className="range-slider" min={16} max={54} step={2} value={nodeSize} onChange={e => setNodeSize(Number(e.target.value))} style={{ width: '100%' }} />
           </div>
         </Accordion>
 
-        <Accordion title="Agent Palette" icon={<FlaskConical size={16} />}>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-            <button onClick={resetAgentColors} style={{ background: 'none', border: 'none', color: 'var(--color-accent)', fontSize: 9, fontWeight: 800, cursor: 'pointer', padding: 0 }}>RESET COLORS</button>
+        <Accordion title="Agent Palette" icon={<FlaskConical size={15} />}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <button onClick={resetAgentColors} style={{
+              background: 'none', border: 'none', color: 'var(--color-accent)',
+              fontSize: 'var(--text-sm)', fontWeight: 600, cursor: 'pointer', padding: 0,
+            }}>
+              Reset Colors
+            </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(44px, 1fr))', gap: 12 }}>
             {Array.from({ length: liveNumAgents }, (_, i) => {
               const color = agentColors[i % agentColors.length] ?? DEFAULT_AGENT_COLORS[i % DEFAULT_AGENT_COLORS.length];
               return (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                   <ColorPicker value={color} onChange={hex => setAgentColor(i, hex)} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--color-text-dim)' }}>A{i}</span>
+                  <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text-dim)' }}>A{i}</span>
                 </div>
               );
             })}
           </div>
         </Accordion>
       </div>
+
+      {/* ── COLLAPSE TOGGLE ──────────────────────────── */}
+      <button
+        onClick={toggleSidebar}
+        title="Collapse sidebar"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          padding: '10px 20px',
+          background: 'none',
+          border: 'none',
+          borderTop: '1px solid var(--color-border)',
+          color: 'var(--color-text-dim)',
+          cursor: 'pointer',
+          fontSize: 'var(--text-sm)',
+          fontWeight: 500,
+          transition: 'all var(--transition-fast)',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; e.currentTarget.style.color = 'var(--color-text)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--color-text-dim)'; }}
+      >
+        <PanelLeftClose size={14} />
+        Collapse
+      </button>
     </div>
   );
 };
