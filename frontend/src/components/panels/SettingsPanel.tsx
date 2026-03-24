@@ -135,11 +135,11 @@ export const SettingsPanel: React.FC = () => {
   const resumeTraining = async () => { await api.train.resume().catch(console.error); storeSetResumed(); };
 
   const buildTools: { m: UIMode; icon: React.ReactNode; label: string }[] = [
-    { m: 'view', icon: <MousePointer2 size={15} />, label: 'Pointer' },
-    { m: 'build_node', icon: <CircleDashed size={15} />, label: 'Add Node' },
-    { m: 'build_edge', icon: <Spline size={15} />, label: 'Add Edge' },
-    { m: 'build_owner', icon: <User size={15} />, label: 'Set Owner' },
-    { m: 'build_dest', icon: <MapPin size={15} />, label: 'Set Dest' },
+    { m: 'view', icon: <MousePointer2 size={17} />, label: 'Pointer' },
+    { m: 'build_node', icon: <CircleDashed size={17} />, label: 'Add Node' },
+    { m: 'build_edge', icon: <Spline size={17} />, label: 'Add Edge' },
+    { m: 'build_owner', icon: <User size={17} />, label: 'Set Owner' },
+    { m: 'build_dest', icon: <MapPin size={17} />, label: 'Set Dest' },
   ];
 
   // Collapsed sidebar: show only icons
@@ -194,16 +194,16 @@ export const SettingsPanel: React.FC = () => {
           {isTraining ? (
             <>
               {isPaused ? (
-                <Button variant="primary" onClick={resumeTraining} style={{ flex: 1, height: 36 }}>
-                  <Play size={14} fill="currentColor" /> Resume
+                <Button variant="primary" onClick={resumeTraining} style={{ flex: 1, height: 42 }}>
+                  <Play size={16} fill="currentColor" /> Resume
                 </Button>
               ) : (
-                <Button variant="warning" onClick={pauseTraining} style={{ flex: 1, height: 36 }}>
-                  <Pause size={14} fill="currentColor" /> Pause
+                <Button variant="warning" onClick={pauseTraining} style={{ flex: 1, height: 42 }}>
+                  <Pause size={16} fill="currentColor" /> Pause
                 </Button>
               )}
-              <Button variant="danger" onClick={stopTraining} style={{ flex: 1, height: 36 }}>
-                <Square size={14} fill="currentColor" /> Stop
+              <Button variant="danger" onClick={stopTraining} style={{ flex: 1, height: 42 }}>
+                <Square size={16} fill="currentColor" /> Stop
               </Button>
             </>
           ) : (
@@ -213,11 +213,12 @@ export const SettingsPanel: React.FC = () => {
               disabled={!graphData}
               style={{
                 width: '100%',
-                height: 42,
+                height: 48,
+                fontSize: 'var(--text-md)',
                 animation: graphData && !isTraining ? 'subtle-pulse 2s infinite' : 'none',
               }}
             >
-              <Play size={15} fill="currentColor" /> Start Simulation
+              <Play size={17} fill="currentColor" /> Start Simulation
             </Button>
           )}
         </div>
@@ -248,8 +249,8 @@ export const SettingsPanel: React.FC = () => {
             onClick={() => setMode(t.m)}
             disabled={isTraining && t.m !== 'view'}
             style={{
-              width: 36,
-              height: 36,
+              width: 42,
+              height: 42,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -281,7 +282,7 @@ export const SettingsPanel: React.FC = () => {
           onClick={() => { if (window.confirm('Clear all graph data?')) clearAll(); }}
           disabled={isTraining}
           style={{
-            width: 36, height: 36,
+            width: 42, height: 42,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'transparent',
             border: '1px solid transparent',
@@ -294,13 +295,13 @@ export const SettingsPanel: React.FC = () => {
           onMouseEnter={e => { if (!isTraining) { e.currentTarget.style.color = 'var(--color-danger)'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}}
           onMouseLeave={e => { e.currentTarget.style.color = 'var(--color-text-dim)'; e.currentTarget.style.background = 'transparent'; }}
         >
-          <Trash2 size={15} />
+          <Trash2 size={17} />
         </button>
       </div>
 
       {/* ── ACCORDION SECTIONS ───────────────────────── */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
-        <Accordion title="Graph Generator" icon={<Layout size={15} />} defaultOpen={!isTraining}>
+        <Accordion title="Graph Generator" icon={<Layout size={17} />} defaultOpen={!isTraining}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 4 }}>
             <Stepper label="Nodes" value={numNodes} onChange={setNumNodes} min={2} max={50} />
             <NumberInput label="Edges" value={numEdges} onChangeValue={setNumEdges} placeholder="Auto" />
@@ -312,13 +313,13 @@ export const SettingsPanel: React.FC = () => {
             onClick={handleRandom}
             disabled={isTraining}
             data-tour="generate-btn"
-            style={{ width: '100%', marginTop: 20, height: 34 }}
+            style={{ width: '100%', marginTop: 20, height: 40 }}
           >
             Generate Random
           </Button>
         </Accordion>
 
-        <Accordion title="Simulation Config" icon={<Activity size={15} />} defaultOpen={isTraining}>
+        <Accordion title="Simulation Config" icon={<Activity size={17} />} defaultOpen={isTraining}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 4 }}>
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -344,7 +345,7 @@ export const SettingsPanel: React.FC = () => {
           </div>
         </Accordion>
 
-        <Accordion title="Display Toggles" icon={<Gauge size={15} />}>
+        <Accordion title="Display Toggles" icon={<Gauge size={17} />}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 16px', marginTop: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <span style={{ fontSize: 'var(--text-base)', fontWeight: 500, color: showIds ? 'var(--color-text)' : 'var(--color-text-dim)' }}>IDs</span>
@@ -372,7 +373,7 @@ export const SettingsPanel: React.FC = () => {
           </div>
         </Accordion>
 
-        <Accordion title="Agent Palette" icon={<FlaskConical size={15} />}>
+        <Accordion title="Agent Palette" icon={<FlaskConical size={17} />}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
             <button onClick={resetAgentColors} style={{
               background: 'none', border: 'none', color: 'var(--color-accent)',

@@ -263,11 +263,14 @@ class GraphopolyGNN(nn.Module):
         # Use Dirichlet distribution for exploration
         # Convert scores to positive concentration parameters
         concentration = F.softplus(price_scores) + 0.5  # min 0.5 to avoid degenerate distributions
-        dist = Dirichlet(concentration)
-        weights = dist.rsample()  # [K], sums to 1
+        # MPS doesn't support _sample_dirichlet — sample on CPU and move back
+        concentration_cpu = concentration.cpu()
+        dist = Dirichlet(concentration_cpu)
+        weights_cpu = dist.rsample()  # [K], sums to 1
+        weights = weights_cpu.to(price_scores.device)
         prices = weights * budget
 
-        log_prob = dist.log_prob(weights)
+        log_prob = dist.log_prob(weights_cpu)
         entropy = dist.entropy()
 
         return prices, log_prob, entropy

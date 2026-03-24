@@ -53,7 +53,7 @@ export default function App() {
   const loadConfig = useConfigStore(s => s.loadConfig);
   const isSidebarCollapsed = useUIStore(s => s.isSidebarCollapsed);
   const [activeTab, setActiveTab] = useState<TabID>('live');
-  const [bottomPanelHeight, setBottomPanelHeight] = useState(35);
+  const [bottomPanelHeight, setBottomPanelHeight] = useState(42);
 
   useEffect(() => {
     api.config.get().then(config => loadConfig(config)).catch(e => console.error('Config fetch failed', e));
@@ -65,7 +65,7 @@ export default function App() {
 
     const onMouseMove = (mouseMoveEvent: MouseEvent) => {
       const delta = startY - mouseMoveEvent.clientY;
-      const newHeight = Math.min(Math.max(startHeight + (delta / window.innerHeight) * 100, 10), 80);
+      const newHeight = Math.min(Math.max(startHeight + (delta / window.innerHeight) * 100, 15), 85);
       setBottomPanelHeight(newHeight);
     };
 
@@ -120,7 +120,7 @@ export default function App() {
         <div
           onMouseDown={startResizing}
           style={{
-            height: '6px',
+            height: '10px',
             cursor: 'ns-resize',
             background: 'transparent',
             zIndex: 20,
@@ -128,6 +128,7 @@ export default function App() {
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
+            flexShrink: 0,
           }}
           onMouseEnter={e => {
             const bar = e.currentTarget.querySelector('.drag-indicator') as HTMLElement;
@@ -141,8 +142,8 @@ export default function App() {
           <div
             className="drag-indicator"
             style={{
-              width: 32,
-              height: 3,
+              width: 48,
+              height: 4,
               borderRadius: 2,
               background: 'var(--color-text-muted)',
               transition: 'background var(--transition-fast)',

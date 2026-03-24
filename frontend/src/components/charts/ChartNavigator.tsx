@@ -1,11 +1,11 @@
 import React from 'react';
 import { useAnalyzeStore } from '../../stores/analyzeStore';
-import { CATEGORIES, chartsByCategory } from '../../lib/chartRegistry';
+import { CATEGORIES } from '../../lib/chartRegistry';
 import { useUIStore } from '../../stores/uiStore';
 import { AGENT_COLORS } from '../../lib/chartTheme';
 
 export const ChartNavigator: React.FC = () => {
-  const { activeCategory, activeChartId, setCategory, setChart,
+  const { activeCategory, setCategory,
     selectedAgents, selectedNodes, toggleAgent, toggleNode, episodeData } = useAnalyzeStore();
   const agentColors = useUIStore(s => s.agentColors);
 
@@ -15,11 +15,12 @@ export const ChartNavigator: React.FC = () => {
   return (
     <div style={{
       display: 'flex',
-      flexDirection: 'column',
-      gap: 16,
-      padding: '16px 24px',
+      alignItems: 'center',
+      gap: 24,
+      padding: '12px 24px',
       borderBottom: '1px solid var(--color-border)',
       background: 'rgba(255,255,255,0.01)',
+      flexWrap: 'wrap',
     }}>
       {/* ── CATEGORIES ─────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
@@ -28,11 +29,11 @@ export const ChartNavigator: React.FC = () => {
             key={cat.id}
             onClick={() => setCategory(cat.id)}
             style={{
-              padding: '6px 14px',
-              borderRadius: 20,
+              padding: '7px 16px',
+              borderRadius: 'var(--radius-pill)',
               fontSize: 'var(--text-sm)',
               fontWeight: 600,
-              letterSpacing: '0.02em',
+              letterSpacing: '0.01em',
               background: activeCategory === cat.id ? 'var(--color-accent)' : 'rgba(255,255,255,0.03)',
               color: activeCategory === cat.id ? '#fff' : 'var(--color-text-dim)',
               border: activeCategory === cat.id ? '1px solid var(--color-accent)' : '1px solid var(--color-border)',
@@ -46,35 +47,13 @@ export const ChartNavigator: React.FC = () => {
         ))}
       </div>
 
-      {/* ── CHARTS ─────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none' }}>
-        {chartsByCategory(activeCategory).map(chart => (
-          <button
-            key={chart.id}
-            onClick={() => setChart(chart.id)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: 6,
-              fontSize: 11,
-              fontWeight: 600,
-              background: activeChartId === chart.id ? 'var(--color-accent-glow)' : 'transparent',
-              color: activeChartId === chart.id ? 'var(--color-accent)' : 'var(--color-text-dim)',
-              border: activeChartId === chart.id ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid transparent',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              transition: 'all 0.2s',
-            }}
-          >
-            {chart.title}
-          </button>
-        ))}
-      </div>
+      <div style={{ height: 20, width: 1, background: 'var(--color-border)', flexShrink: 0 }} />
 
       {/* ── FILTERS ────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 32, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
         {numAgents > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="text-label" style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>Agents</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="text-label" style={{ fontSize: 'var(--text-xs)' }}>Agents</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {Array.from({ length: numAgents }, (_, i) => {
                 const id = String(i);
@@ -85,11 +64,11 @@ export const ChartNavigator: React.FC = () => {
                     key={id}
                     onClick={() => toggleAgent(id)}
                     style={{
-                      padding: '2px 8px',
-                      fontSize: 9,
+                      padding: '3px 10px',
+                      fontSize: 'var(--text-xs)',
                       fontWeight: 700,
-                      borderRadius: 4,
-                      background: active ? color + '20' : 'transparent',
+                      borderRadius: 'var(--radius-sm)',
+                      background: active ? color + '22' : 'transparent',
                       color: active ? color : 'var(--color-text-dim)',
                       border: `1px solid ${active ? color : 'var(--color-border)'}`,
                       cursor: 'pointer',
@@ -105,36 +84,36 @@ export const ChartNavigator: React.FC = () => {
         )}
 
         {numNodes > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-             <span className="text-label" style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>Nodes</span>
-             <div style={{ display: 'flex', gap: 4, overflowX: 'auto', maxWidth: 400, scrollbarWidth: 'none' }}>
-               {Array.from({ length: numNodes }, (_, i) => {
-                 const id = String(i);
-                 const active = selectedNodes.length === 0 || selectedNodes.includes(id);
-                 const owner = episodeData?.graph?.ownership?.[id] ?? -1;
-                 const color = owner >= 0 ? (agentColors[owner % agentColors.length] ?? AGENT_COLORS[owner % AGENT_COLORS.length]) : 'var(--color-text-dim)';
-                 return (
-                   <button
-                     key={id}
-                     onClick={() => toggleNode(id)}
-                     style={{
-                       padding: '2px 8px',
-                       fontSize: 9,
-                       fontWeight: 700,
-                       borderRadius: 4,
-                       background: active ? color + '20' : 'transparent',
-                       color: active ? color : 'var(--color-text-dim)',
-                       border: `1px solid ${active ? color : 'var(--color-border)'}`,
-                       cursor: 'pointer',
-                       whiteSpace: 'nowrap',
-                       transition: 'all 0.15s',
-                     }}
-                   >
-                     N{i}
-                   </button>
-                 );
-               })}
-             </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="text-label" style={{ fontSize: 'var(--text-xs)' }}>Nodes</span>
+            <div style={{ display: 'flex', gap: 4, overflowX: 'auto', maxWidth: 400, scrollbarWidth: 'none' }}>
+              {Array.from({ length: numNodes }, (_, i) => {
+                const id = String(i);
+                const active = selectedNodes.length === 0 || selectedNodes.includes(id);
+                const owner = episodeData?.graph?.ownership?.[id] ?? -1;
+                const color = owner >= 0 ? (agentColors[owner % agentColors.length] ?? AGENT_COLORS[owner % AGENT_COLORS.length]) : 'var(--color-text-dim)';
+                return (
+                  <button
+                    key={id}
+                    onClick={() => toggleNode(id)}
+                    style={{
+                      padding: '3px 10px',
+                      fontSize: 'var(--text-xs)',
+                      fontWeight: 700,
+                      borderRadius: 'var(--radius-sm)',
+                      background: active ? color + '22' : 'transparent',
+                      color: active ? color : 'var(--color-text-dim)',
+                      border: `1px solid ${active ? color : 'var(--color-border)'}`,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    N{i}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

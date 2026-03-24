@@ -31,18 +31,19 @@
 
   /* ── Typography ───────────────────────────────── */
   --font-sans: 'Inter', 'Helvetica Neue', 'Arial', sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
-  --text-xs: 10px;
-  --text-sm: 11px;
-  --text-base: 12.5px;
-  --text-md: 13px;
-  --text-lg: 15px;
-  --text-xl: 18px;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
 
   /* ── Layout ───────────────────────────────────── */
-  --header-h: 52px;
-  --sidebar-w: 320px;
-  --sidebar-w-collapsed: 52px;
+  --header-h: 56px;
+  --sidebar-w: 300px;
+  --sidebar-w-collapsed: 56px;
 
   /* ── Spacing ──────────────────────────────────── */
   --space-1: 4px;

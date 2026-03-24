@@ -48,16 +48,16 @@ export const Accordion: React.FC<AccordionProps> = ({ title, icon, children, def
             {icon}
           </span>
           <span style={{
-            fontSize: 12,
+            fontSize: 'var(--text-md)',
             fontWeight: 500,
-            letterSpacing: '0.02em',
+            letterSpacing: '0.01em',
             color: isOpen ? 'var(--color-text)' : 'var(--color-text-secondary)',
           }}>
             {title}
           </span>
         </div>
         <ChevronRight
-          size={14}
+          size={16}
           color="var(--color-text-dim)"
           style={{
             transition: 'transform var(--transition-base)',

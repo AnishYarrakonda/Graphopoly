@@ -11,18 +11,19 @@ const StatPill: React.FC<{ label: string; value: number | string; color?: string
   <div style={{
     display: 'flex',
     flexDirection: 'column',
-    gap: 3,
-    padding: '6px 8px',
+    gap: 4,
+    padding: '8px 10px',
     background: 'rgba(255,255,255,0.02)',
     borderRadius: 'var(--radius-sm)',
   }}>
-    <span className="text-label" style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.04em' }}>{label}</span>
+    <span className="text-label" style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.05em' }}>{label}</span>
     <span style={{
-      fontSize: 14,
-      fontWeight: 600,
+      fontSize: 'var(--text-lg)',
+      fontWeight: 700,
       color: color || 'var(--color-text)',
       fontFamily: 'var(--font-mono)',
       fontVariantNumeric: 'tabular-nums',
+      lineHeight: 1.2,
     }}>
       {typeof value === 'number' ? (Number.isInteger(value) ? value : value.toFixed(1)) : value}
     </span>
@@ -93,7 +94,7 @@ export const LiveStatsPanel: React.FC = () => {
               gap: 12,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 'var(--text-md)', fontWeight: 600, color }}>Agent {i}</span>
+                <span style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color }}>Agent {i}</span>
                 <div style={{
                   fontSize: 'var(--text-xs)',
                   fontWeight: 600,
