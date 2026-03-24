@@ -2,12 +2,12 @@
 """
 Graphopoly — single entry point.
 
-Starts the FastAPI backend and optionally the Vite frontend dev server.
+Starts the FastAPI backend and the Vite frontend dev server together.
 
 Usage:
-    python main.py              # Start backend only (use with `npm run dev` in frontend/)
-    python main.py --dev        # Start both backend + Vite dev server
-    python main.py --port 9000  # Custom backend port
+    python main.py                  # Start both backend + Vite dev server
+    python main.py --backend-only   # Start backend only
+    python main.py --port 9000      # Custom backend port
 """
 
 from __future__ import annotations
@@ -45,17 +45,18 @@ def kill_port(port: int) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Launch Graphopoly")
     parser.add_argument("--port", type=int, default=8000, help="Backend port (default: 8000)")
-    parser.add_argument("--dev", action="store_true", help="Also start the Vite frontend dev server")
+    parser.add_argument("--backend-only", action="store_true", help="Start backend only (skip Vite dev server)")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Backend host (default: 0.0.0.0)")
     args = parser.parse_args()
 
     frontend_dir = PROJECT_ROOT / "frontend"
     vite_process = None
+    start_frontend = not args.backend_only
 
     # Kill anything on the port before starting
     kill_port(args.port)
 
-    if args.dev:
+    if start_frontend:
         # Check if frontend deps are installed
         if not (frontend_dir / "node_modules").exists():
             print("📦 Installing frontend dependencies...")
@@ -81,7 +82,7 @@ def main():
 ╠══════════════════════════════════════════╣
 ║  Backend API:  http://localhost:{args.port}      ║""")
 
-    if args.dev:
+    if start_frontend:
         print(f"║  Frontend:    http://localhost:5173       ║")
         print(f"║  Open → http://localhost:5173             ║")
     else:

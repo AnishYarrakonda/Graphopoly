@@ -88,10 +88,10 @@ export const Header: React.FC = () => {
           left: 0;
           right: 0;
           z-index: 100;
-          background: var(--color-bg-elevated);
+          background: linear-gradient(to right, #0a1628, #0c1220);
           backdrop-filter: blur(12px);
           border-bottom: 1px solid var(--color-border);
-          box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+          box-shadow: 0 1px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 158, 255, 0.04);
         }
 
         .header-left {
@@ -167,7 +167,7 @@ export const Header: React.FC = () => {
           font-size: var(--text-sm);
           font-weight: 600;
           color: var(--color-accent);
-          border: 1px solid rgba(129, 140, 248, 0.2);
+          border: 1px solid var(--color-accent-glow);
         }
 
         .header-sim-dot {

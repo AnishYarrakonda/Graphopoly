@@ -54,12 +54,13 @@ export default function App() {
   const isSidebarCollapsed = useUIStore(s => s.isSidebarCollapsed);
   const [activeTab, setActiveTab] = useState<TabID>('live');
   const [bottomPanelHeight, setBottomPanelHeight] = useState(42);
+  const [sidebarWidth, setSidebarWidth] = useState(300);
 
   useEffect(() => {
     api.config.get().then(config => loadConfig(config)).catch(e => console.error('Config fetch failed', e));
   }, [loadConfig]);
 
-  const startResizing = (mouseDownEvent: React.MouseEvent) => {
+  const startResizingBottom = (mouseDownEvent: React.MouseEvent) => {
     const startY = mouseDownEvent.clientY;
     const startHeight = bottomPanelHeight;
 
@@ -78,13 +79,35 @@ export default function App() {
     document.addEventListener('mouseup', onMouseUp);
   };
 
+  const startResizingSidebar = (mouseDownEvent: React.MouseEvent) => {
+    mouseDownEvent.preventDefault();
+    const startX = mouseDownEvent.clientX;
+    const startWidth = sidebarWidth;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.min(Math.max(startWidth + (e.clientX - startX), 180), 600);
+      setSidebarWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const effectiveSidebarWidth = isSidebarCollapsed ? 56 : sidebarWidth;
+
   return (
     <AppShell>
       <OnboardingOverlay />
 
       {/* ── SIDEBAR ────────────────────────────────── */}
       <aside style={{
-        width: isSidebarCollapsed ? 'var(--sidebar-w-collapsed)' : 'var(--sidebar-w)',
+        width: effectiveSidebarWidth,
+        minWidth: effectiveSidebarWidth,
         height: '100%',
         borderRight: '1px solid var(--color-border)',
         background: 'var(--color-bg-elevated)',
@@ -92,9 +115,29 @@ export default function App() {
         flexDirection: 'column',
         zIndex: 10,
         overflowY: 'auto',
-        transition: 'width var(--transition-slow)',
+        position: 'relative',
+        flexShrink: 0,
+        transition: isSidebarCollapsed ? 'width var(--transition-slow)' : 'none',
       }}>
         <SettingsPanel />
+        {/* Sidebar resize handle */}
+        {!isSidebarCollapsed && (
+          <div
+            onMouseDown={startResizingSidebar}
+            style={{
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              width: 5,
+              height: '100%',
+              cursor: 'ew-resize',
+              zIndex: 20,
+              background: 'transparent',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--color-accent)'; e.currentTarget.style.opacity = '0.4'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.opacity = '1'; }}
+          />
+        )}
       </aside>
 
       {/* ── MAIN CONTENT ──────────────────────────── */}
@@ -111,14 +154,14 @@ export default function App() {
           flex: 1,
           position: 'relative',
           overflow: 'hidden',
-          background: 'radial-gradient(circle at center, #111114 0%, var(--color-bg) 100%)',
+          background: 'radial-gradient(circle at 40% 40%, #0d1e3a 0%, var(--color-bg) 100%)',
         }}>
           <GraphCanvas />
         </section>
 
         {/* DRAG HANDLE */}
         <div
-          onMouseDown={startResizing}
+          onMouseDown={startResizingBottom}
           style={{
             height: '10px',
             cursor: 'ns-resize',
