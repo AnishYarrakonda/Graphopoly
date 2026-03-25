@@ -17,6 +17,7 @@ from pathlib import Path
 from backend.config import GraphopolyConfig
 from backend.core.graph_world import GraphWorld
 from backend.core.env import GraphopolyEnv
+from backend.core.runner_utils import build_step_record, build_initial_step
 from backend.agent.gnn_network import GraphopolyGNN
 from backend.agent.ppo import PPOTrainer
 from backend.logger import SimulationLogger
@@ -94,18 +95,7 @@ def train(
         logger.log_initial_state(env.agents)
 
         # Step history for frontend animation (kept in memory per episode)
-        step_history: list[dict] = [{
-            "step": 0,
-            "positions": [a.position for a in env.agents],
-            "prices": {
-                str(n): a.prices.get(n, 0)
-                for a in env.agents for n in a.owned_nodes
-            },
-            "actions": [],
-            "rewards": [],
-            "taxes": {},
-            "dest_completions": [],
-        }]
+        step_history: list[dict] = [build_initial_step(env.agents)]
 
         # ── Step loop ────────────────────────────────────────────────────────
         for step in range(config.train.steps_per_episode):
@@ -142,33 +132,7 @@ def train(
             logger.log_step(step, env.agents, actions, rewards, info)
 
             # Build the lightweight step record for frontend animation
-            step_history.append({
-                "step": step + 1,
-                "positions": [a.position for a in env.agents],
-                "prices": {
-                    str(n): a.prices.get(n, 0)
-                    for a in env.agents for n in a.owned_nodes
-                },
-                "actions": [
-                    {
-                        "move": act["move"],
-                        "price_changes": {
-                            str(k): v
-                            for k, v in act.get("price_changes", {}).items()
-                        },
-                    }
-                    for act in actions
-                ],
-                "rewards": [round(r, 3) for r in rewards],
-                "taxes": {
-                    str(payer): {str(recv): amt for recv, amt in recvs.items()}
-                    for payer, recvs in info.get("taxes", {}).items()
-                },
-                "dest_completions": [
-                    {"agent": aid, "node": node}
-                    for aid, node in info.get("dest_completions", [])
-                ],
-            })
+            step_history.append(build_step_record(step + 1, env.agents, actions, rewards, info))
 
             if done:
                 break

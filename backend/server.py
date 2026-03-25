@@ -33,6 +33,7 @@ from backend.db_export import export_episode_to_zip
 # Project root (parent of backend/)
 PROJECT_ROOT = Path(__file__).parent.parent
 EPISODES_DIR = PROJECT_ROOT / "episodes"
+GRAPHS_DIR   = PROJECT_ROOT / "graphs"
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 
 # ------------------------------------------------------------------
@@ -49,6 +50,10 @@ _state = {
     "train_thread": None,
     "event_loop": None,
     "custom_layout": None,  # User-arranged layout positions (persisted across training)
+    "run_id": None,         # Current run's unique identifier
+    "run_name": "",         # Human-readable name for current run
+    "run_mode": None,       # "train" or "simulate"
+    "run_started_at": None, # ISO timestamp of run start
 }
 _state["pause_event"].set()
 
@@ -60,15 +65,8 @@ _state["pause_event"].set()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _state["event_loop"] = asyncio.get_event_loop()
-    
-    # ── SESSION CLEANUP ──────────────────────────────────────────────────────
-    # Completely clear the episodes directory on launch to ensure a fresh session.
-    # We use this folder for all temporary simulation logs and replay JSONs.
-    if EPISODES_DIR.exists():
-        import shutil
-        shutil.rmtree(EPISODES_DIR)
     EPISODES_DIR.mkdir(exist_ok=True)
-    
+    GRAPHS_DIR.mkdir(exist_ok=True)
     yield
 
 
@@ -110,6 +108,10 @@ class ConfigUpdate(BaseModel):
     log: dict = {}
 
 
+class StartRequest(BaseModel):
+    run_name: str = ""
+
+
 # ------------------------------------------------------------------
 # Helpers
 # ------------------------------------------------------------------
@@ -127,6 +129,36 @@ def _check_training_lock():
 def _serialize_layout(layout: dict) -> dict:
     """Ensure layout keys are strings for JSON serialization and values are lists."""
     return {str(k): [float(v[0]), float(v[1])] for k, v in layout.items()}
+
+
+def _make_run_id(run_name: str) -> str:
+    """Generate a unique, filesystem-safe run identifier."""
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    if run_name:
+        safe = re.sub(r"[^a-zA-Z0-9_\-]", "_", run_name.strip())[:40]
+        return f"{ts}_{safe}"
+    return ts
+
+
+def _write_run_meta(run_id: str, final_metrics: dict) -> None:
+    """Write a small sidecar .meta.json so experiments can be listed cheaply."""
+    config_snap = final_metrics.get("config_snapshot", {})
+    agent_cfg = config_snap.get("agent", {})
+    meta = {
+        "run_id":       run_id,
+        "run_name":     _state.get("run_name", ""),
+        "mode":         _state.get("run_mode", "simulate"),
+        "started_at":   _state.get("run_started_at", ""),
+        "finished_at":  datetime.now().isoformat(),
+        "num_episodes": final_metrics.get("episode", 0),
+        "num_agents":   agent_cfg.get("num_agents", 0),
+        "num_nodes":    len(final_metrics.get("graph_data", {}).get("nodes", [])),
+        "final_rewards": final_metrics.get("episode_rewards", []),
+        "final_trips":   final_metrics.get("episode_trips", []),
+    }
+    path = EPISODES_DIR / f"{run_id}.meta.json"
+    with open(path, "w") as f:
+        json.dump(meta, f, indent=2)
 
 
 # ------------------------------------------------------------------
@@ -349,33 +381,41 @@ async def update_config(req: ConfigUpdate):
 # ------------------------------------------------------------------
 
 @app.post("/api/train/start")
-async def start_training():
+async def start_training(req: StartRequest = StartRequest()):
     if _state["training"]:
         return {"status": "error", "message": "Training already running"}
     if _state["world"] is None:
         return {"status": "error", "message": "No graph loaded. Build or generate one first."}
 
+    run_id = _make_run_id(req.run_name)
     _state["stop_event"].clear()
     _state["pause_event"].set()
     _state["training"] = True
+    _state["run_id"] = run_id
+    _state["run_name"] = req.run_name or run_id
+    _state["run_mode"] = "train"
+    _state["run_started_at"] = datetime.now().isoformat()
 
     config = _state["config"]
     world = _state["world"]
 
     def run_training():
+        last_metrics: dict = {}
         try:
             EPISODES_DIR.mkdir(exist_ok=True)
 
             def on_episode(metrics: dict):
-                # Use user's custom layout instead of recalculated one
+                nonlocal last_metrics
                 if _state["custom_layout"]:
                     metrics["layout"] = _state["custom_layout"]
                 elif "layout" in metrics:
                     metrics["layout"] = _serialize_layout(metrics["layout"])
                 sync_broadcast({"type": "episode_update", "data": metrics})
-                # Auto-save temp episode
+                last_metrics = metrics
                 try:
                     with open(EPISODES_DIR / "temp_latest.json", "w") as _f:
+                        json.dump(metrics, _f)
+                    with open(EPISODES_DIR / f"{run_id}.json", "w") as _f:
                         json.dump(metrics, _f)
                 except Exception:
                     pass
@@ -387,10 +427,13 @@ async def start_training():
                 pause_event=_state["pause_event"],
             )
 
+            if last_metrics:
+                _write_run_meta(run_id, last_metrics)
+
             if result.get("stopped_early"):
-                sync_broadcast({"type": "training_stopped", "data": result})
+                sync_broadcast({"type": "training_stopped", "data": {**result, "run_id": run_id}})
             else:
-                sync_broadcast({"type": "training_complete", "data": result})
+                sync_broadcast({"type": "training_complete", "data": {**result, "run_id": run_id}})
         except Exception as e:
             import traceback
             sync_broadcast({"type": "training_error", "data": {"error": str(e), "trace": traceback.format_exc()}})
@@ -401,7 +444,7 @@ async def start_training():
     _state["train_thread"] = thread
     thread.start()
 
-    return {"status": "ok", "message": "Training started"}
+    return {"status": "ok", "message": "Training started", "run_id": run_id}
 
 
 @app.post("/api/train/stop")
@@ -428,32 +471,42 @@ async def resume_training():
 # ------------------------------------------------------------------
 
 @app.post("/api/simulate/start")
-async def start_simulation():
+async def start_simulation(req: StartRequest = StartRequest()):
     """Load the model for the current graph's size and run inference-only episodes."""
     if _state["training"]:
         return {"status": "error", "message": "Already running"}
     if _state["world"] is None:
         return {"status": "error", "message": "No graph loaded. Build or generate one first."}
 
+    run_id = _make_run_id(req.run_name)
     _state["stop_event"].clear()
     _state["pause_event"].set()
     _state["training"] = True
+    _state["run_id"] = run_id
+    _state["run_name"] = req.run_name or run_id
+    _state["run_mode"] = "simulate"
+    _state["run_started_at"] = datetime.now().isoformat()
 
     config = _state["config"]
     world = _state["world"]
 
     def run():
+        last_metrics: dict = {}
         try:
             EPISODES_DIR.mkdir(exist_ok=True)
 
             def on_episode(metrics: dict):
+                nonlocal last_metrics
                 if _state["custom_layout"]:
                     metrics["layout"] = _state["custom_layout"]
                 elif "layout" in metrics:
                     metrics["layout"] = _serialize_layout(metrics["layout"])
                 sync_broadcast({"type": "episode_update", "data": metrics})
+                last_metrics = metrics
                 try:
                     with open(EPISODES_DIR / "temp_latest.json", "w") as _f:
+                        json.dump(metrics, _f)
+                    with open(EPISODES_DIR / f"{run_id}.json", "w") as _f:
                         json.dump(metrics, _f)
                 except Exception:
                     pass
@@ -465,10 +518,13 @@ async def start_simulation():
                 pause_event=_state["pause_event"],
             )
 
+            if last_metrics:
+                _write_run_meta(run_id, last_metrics)
+
             if result.get("stopped_early"):
-                sync_broadcast({"type": "training_stopped", "data": result})
+                sync_broadcast({"type": "training_stopped", "data": {**result, "run_id": run_id}})
             else:
-                sync_broadcast({"type": "training_complete", "data": result})
+                sync_broadcast({"type": "training_complete", "data": {**result, "run_id": run_id}})
         except Exception as e:
             import traceback
             sync_broadcast({"type": "training_error", "data": {"error": str(e), "trace": traceback.format_exc()}})
@@ -479,7 +535,7 @@ async def start_simulation():
     _state["train_thread"] = thread
     thread.start()
 
-    return {"status": "ok", "message": "Simulation started"}
+    return {"status": "ok", "message": "Simulation started", "run_id": run_id}
 
 
 # ------------------------------------------------------------------
@@ -588,15 +644,138 @@ async def export_data():
 
 
 # ------------------------------------------------------------------
+# Experiments (named run history)
+# ------------------------------------------------------------------
+
+@app.get("/api/experiments")
+async def list_experiments():
+    """List all completed runs by reading their .meta.json sidecars."""
+    EPISODES_DIR.mkdir(exist_ok=True)
+    metas = []
+    for meta_path in sorted(EPISODES_DIR.glob("*.meta.json"), reverse=True):
+        try:
+            with open(meta_path) as f:
+                metas.append(json.load(f))
+        except Exception:
+            pass
+    return {"experiments": metas}
+
+
+@app.get("/api/experiments/{run_id}")
+async def load_experiment(run_id: str):
+    """Load the full episode data for a saved run."""
+    safe = re.sub(r"[^a-zA-Z0-9_\-]", "", run_id)
+    path = EPISODES_DIR / f"{safe}.json"
+    if not path.exists():
+        return JSONResponse({"status": "error", "message": "Run not found."}, 404)
+    with open(path) as f:
+        data = json.load(f)
+    return {"status": "ok", "data": data}
+
+
+@app.delete("/api/experiments/{run_id}")
+async def delete_experiment(run_id: str):
+    """Delete a saved run (both episode JSON and meta sidecar)."""
+    safe = re.sub(r"[^a-zA-Z0-9_\-]", "", run_id)
+    deleted = []
+    for suffix in [".json", ".meta.json"]:
+        p = EPISODES_DIR / f"{safe}{suffix}"
+        if p.exists():
+            p.unlink()
+            deleted.append(p.name)
+    return {"status": "ok", "deleted": deleted}
+
+
+# ------------------------------------------------------------------
+# Graph Library (save / load named graph configurations)
+# ------------------------------------------------------------------
+
+class SaveGraphRequest(BaseModel):
+    name: str
+    graph: dict   # GraphBuildRequest-compatible fields
+    layout: dict  # {node_id: [x, y]}
+
+
+@app.post("/api/graphs/save")
+async def save_graph_config(req: SaveGraphRequest):
+    """Persist the current graph topology + layout under a user-chosen name."""
+    GRAPHS_DIR.mkdir(exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    safe_name = re.sub(r"[^a-zA-Z0-9_\-]", "_", req.name.strip())[:48]
+    graph_id = f"{ts}_{safe_name}" if safe_name else ts
+    doc = {
+        "graph_id":  graph_id,
+        "name":      req.name,
+        "saved_at":  datetime.now().isoformat(),
+        "num_nodes": req.graph.get("num_nodes", 0),
+        "num_agents": max(
+            (max(req.graph.get("ownership", {}).values(), default=-1) + 1),
+            len(req.graph.get("destinations", {})),
+            1,
+        ),
+        "graph":  req.graph,
+        "layout": req.layout,
+    }
+    with open(GRAPHS_DIR / f"{graph_id}.json", "w") as f:
+        json.dump(doc, f, indent=2)
+    return {"status": "ok", "graph_id": graph_id}
+
+
+@app.get("/api/graphs")
+async def list_graphs():
+    """List all saved graph configurations (metadata only)."""
+    GRAPHS_DIR.mkdir(exist_ok=True)
+    graphs = []
+    for p in sorted(GRAPHS_DIR.glob("*.json"), reverse=True):
+        try:
+            with open(p) as f:
+                doc = json.load(f)
+            graphs.append({
+                "graph_id":  doc.get("graph_id", p.stem),
+                "name":      doc.get("name", p.stem),
+                "saved_at":  doc.get("saved_at", ""),
+                "num_nodes": doc.get("num_nodes", 0),
+                "num_agents": doc.get("num_agents", 0),
+            })
+        except Exception:
+            pass
+    return {"graphs": graphs}
+
+
+@app.get("/api/graphs/{graph_id}")
+async def load_graph_config(graph_id: str):
+    """Return the full saved graph (topology + layout) by ID."""
+    safe = re.sub(r"[^a-zA-Z0-9_\-]", "", graph_id)
+    path = GRAPHS_DIR / f"{safe}.json"
+    if not path.exists():
+        return JSONResponse({"status": "error", "message": "Graph not found."}, 404)
+    with open(path) as f:
+        doc = json.load(f)
+    return {"status": "ok", "data": doc}
+
+
+@app.delete("/api/graphs/{graph_id}")
+async def delete_graph_config(graph_id: str):
+    safe = re.sub(r"[^a-zA-Z0-9_\-]", "", graph_id)
+    path = GRAPHS_DIR / f"{safe}.json"
+    if path.exists():
+        path.unlink()
+    return {"status": "ok"}
+
+
+# ------------------------------------------------------------------
 # Status
 # ------------------------------------------------------------------
 
 @app.get("/api/status")
 async def get_status():
     return {
-        "training": _state["training"],
-        "paused": not _state["pause_event"].is_set(),
+        "training":  _state["training"],
+        "paused":    not _state["pause_event"].is_set(),
         "has_graph": _state["world"] is not None,
+        "run_id":    _state.get("run_id"),
+        "run_name":  _state.get("run_name", ""),
+        "run_mode":  _state.get("run_mode"),
     }
 
 

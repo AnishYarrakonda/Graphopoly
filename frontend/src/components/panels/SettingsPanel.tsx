@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGraphStore } from '../../stores/graphStore';
 import { useTrainingStore } from '../../stores/trainingStore';
 import { useUIStore, DEFAULT_AGENT_COLORS, UIMode } from '../../stores/uiStore';
 import { useConfigStore } from '../../stores/configStore';
-import { api } from '../../api/client';
+import { api, SavedGraphMeta } from '../../api/client';
 import {
   Play, Pause, Square, Layout, Activity, Gauge, FlaskConical,
   MousePointer2, CircleDashed, Spline, User, MapPin, Trash2,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, Save, FolderOpen,
 } from 'lucide-react';
 import { Accordion, Stepper, NumberInput, Button, Toggle, ColorPicker } from '../shared';
 
@@ -42,6 +42,13 @@ export const SettingsPanel: React.FC = () => {
   const [numAgents, setNumAgents] = useState(2);
   const [numDests, setNumDests] = useState(2);
   const [error, setError] = useState<string | null>(null);
+  const [runName, setRunName] = useState('');
+
+  // Graph library state
+  const [savedGraphs, setSavedGraphs] = useState<SavedGraphMeta[]>([]);
+  const [graphLibOpen, setGraphLibOpen] = useState(false);
+  const [saveGraphName, setSaveGraphName] = useState('');
+  const [savingGraph, setSavingGraph] = useState(false);
 
   const [priceBudget, setPriceBudgetLocal] = useState(config?.agent?.price_budget ?? 100);
   const [tripReward, setTripRewardLocal] = useState(config?.agent?.trip_reward ?? 25);
@@ -89,6 +96,72 @@ export const SettingsPanel: React.FC = () => {
       .catch((e: unknown) => console.error('Agent count update failed:', e));
   };
 
+  const fetchSavedGraphs = useCallback(async () => {
+    try {
+      const res = await api.graphs.list();
+      setSavedGraphs(res.graphs);
+    } catch { /* non-critical */ }
+  }, []);
+
+  useEffect(() => { fetchSavedGraphs(); }, [fetchSavedGraphs]);
+
+  const handleSaveGraph = async () => {
+    if (!graphData || !saveGraphName.trim()) return;
+    setSavingGraph(true);
+    try {
+      const layoutForApi: Record<string, [number, number]> = {};
+      if (graphLayout) {
+        for (const [k, v] of Object.entries(graphLayout)) layoutForApi[String(k)] = v;
+      }
+      await api.graphs.save(saveGraphName.trim(), {
+        num_nodes: graphData.num_nodes,
+        edges: graphData.edges,
+        ownership: Object.fromEntries(Object.entries(graphData.ownership).map(([k, v]) => [String(k), Number(v)])),
+        destinations: Object.fromEntries(Object.entries(graphData.destinations).map(([k, v]) => [String(k), v as number[]])),
+        starting_positions: Object.fromEntries(Object.entries(graphData.starting_positions || {}).map(([k, v]) => [String(k), Number(v)])),
+      }, layoutForApi);
+      setSaveGraphName('');
+      await fetchSavedGraphs();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSavingGraph(false);
+    }
+  };
+
+  const handleLoadSavedGraph = async (graphId: string) => {
+    if (isTraining) return;
+    try {
+      const res = await api.graphs.load(graphId);
+      if (res.status === 'ok' && res.data) {
+        const { graph, layout } = res.data;
+        const graphResponse = await api.graph.build({
+          num_nodes: graph.num_nodes,
+          edges: graph.edges,
+          ownership: graph.ownership,
+          destinations: graph.destinations,
+          starting_positions: graph.starting_positions,
+        });
+        const parsedLayout: Record<number, [number, number]> = {};
+        for (const [k, v] of Object.entries(layout || {})) {
+          parsedLayout[Number(k)] = v as [number, number];
+        }
+        loadGraph(graphResponse.graph, Object.keys(parsedLayout).length > 0 ? parsedLayout : graphResponse.layout);
+        useTrainingStore.getState().resetEpisodeData();
+        setGraphLibOpen(false);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Load failed');
+    }
+  };
+
+  const handleDeleteSavedGraph = async (graphId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this saved graph?')) return;
+    await api.graphs.delete(graphId).catch(() => {});
+    setSavedGraphs(prev => prev.filter(g => g.graph_id !== graphId));
+  };
+
   const handleRandom = async () => {
     if (isTraining) return;
     setError(null);
@@ -124,7 +197,8 @@ export const SettingsPanel: React.FC = () => {
         for (const [k, v] of Object.entries(graphLayout)) layoutForApi[String(k)] = v;
         await api.graph.syncLayout(layoutForApi);
       }
-      await api.simulate.start();
+      await api.simulate.start(runName.trim());
+      setRunName('');
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to start simulation');
     }
@@ -190,6 +264,26 @@ export const SettingsPanel: React.FC = () => {
 
       {/* ── SESSION CONTROL ──────────────────────────── */}
       <div style={{ padding: '20px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-accent-surface)' }}>
+        {!isTraining && (
+          <input
+            value={runName}
+            onChange={e => setRunName(e.target.value)}
+            placeholder="Run name (optional)"
+            maxLength={48}
+            style={{
+              width: '100%', boxSizing: 'border-box',
+              marginBottom: 10, padding: '7px 10px',
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-btn)',
+              color: 'var(--color-text)',
+              fontSize: 'var(--text-sm)',
+              outline: 'none',
+            }}
+            onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-accent)'; }}
+            onBlur={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; }}
+          />
+        )}
         <div style={{ display: 'flex', gap: 8, marginBottom: error ? 12 : 0 }}>
           {isTraining ? (
             <>
@@ -317,6 +411,104 @@ export const SettingsPanel: React.FC = () => {
           >
             Generate Random
           </Button>
+
+          {/* ── Graph Library ── */}
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--color-border)' }}>
+            {/* Save current graph */}
+            {graphData && (
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                <input
+                  value={saveGraphName}
+                  onChange={e => setSaveGraphName(e.target.value)}
+                  placeholder="Save graph as…"
+                  maxLength={48}
+                  disabled={isTraining}
+                  style={{
+                    flex: 1, padding: '5px 8px',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-btn)',
+                    color: 'var(--color-text)',
+                    fontSize: 'var(--text-sm)',
+                    outline: 'none',
+                    opacity: isTraining ? 0.5 : 1,
+                  }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--color-accent)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--color-border)'; }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSaveGraph(); }}
+                />
+                <button
+                  onClick={handleSaveGraph}
+                  disabled={!saveGraphName.trim() || savingGraph || isTraining}
+                  title="Save graph"
+                  style={{
+                    width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-btn)', color: 'var(--color-text-dim)',
+                    cursor: 'pointer', flexShrink: 0,
+                    opacity: (!saveGraphName.trim() || savingGraph || isTraining) ? 0.35 : 1,
+                  }}
+                >
+                  <Save size={13} />
+                </button>
+              </div>
+            )}
+
+            {/* Load saved graph */}
+            <button
+              onClick={() => { setGraphLibOpen(o => !o); if (!graphLibOpen) fetchSavedGraphs(); }}
+              disabled={isTraining}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'none', border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-btn)', padding: '6px 10px',
+                color: 'var(--color-text-dim)', fontSize: 'var(--text-sm)', cursor: 'pointer',
+                opacity: isTraining ? 0.5 : 1,
+              }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FolderOpen size={13} /> Load Saved Graph
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{savedGraphs.length}</span>
+            </button>
+
+            {graphLibOpen && (
+              <div style={{
+                marginTop: 6, border: '1px solid var(--color-border)', borderRadius: 8,
+                overflow: 'hidden', background: 'rgba(0,0,0,0.2)',
+              }}>
+                {savedGraphs.length === 0 ? (
+                  <div style={{ padding: '12px', textAlign: 'center', fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>
+                    No saved graphs yet
+                  </div>
+                ) : savedGraphs.map(g => (
+                  <div
+                    key={g.graph_id}
+                    onClick={() => handleLoadSavedGraph(g.graph_id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid var(--color-border)',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.03)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                  >
+                    <div>
+                      <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>{g.name}</div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-dim)' }}>{g.num_nodes}n · {g.num_agents}a</div>
+                    </div>
+                    <button
+                      onClick={e => handleDeleteSavedGraph(g.graph_id, e)}
+                      style={{ background: 'none', border: 'none', padding: 4, color: 'var(--color-text-dim)', cursor: 'pointer', borderRadius: 4 }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-danger)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-text-dim)'; }}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </Accordion>
 
         <Accordion title="Simulation Config" icon={<Activity size={17} />} defaultOpen={isTraining}>

@@ -4,10 +4,11 @@ import { useTrainingStore } from '../../stores/trainingStore';
 import { useAnalyzeStore } from '../../stores/analyzeStore';
 import { useUIStore } from '../../stores/uiStore';
 import { api } from '../../api/client';
-import { Play, Pause, SkipBack, SkipForward, FastForward, Rewind, Download } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, FastForward, Rewind, Download, FolderOpen } from 'lucide-react';
 import { RangeSlider, Button } from '../shared';
 import { ChartNavigator } from '../charts/ChartNavigator';
 import { ChartDisplay } from '../charts/ChartDisplay';
+import { ExperimentsModal } from './ExperimentsModal';
 import { downloadAllCsvsAsZip } from '../../lib/csvExport';
 import { AGENT_COLORS } from '../../lib/chartTheme';
 import type { BuildParams } from '../../lib/chartRegistry';
@@ -28,6 +29,7 @@ export const AnalysisReplayPanel: React.FC = () => {
 
   const [isComputing, setIsComputing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showExperiments, setShowExperiments] = useState(false);
 
   // Auto-compute analysis timeline when episode data becomes available
   const computeTimeline = useCallback(async (data: typeof episodeData) => {
@@ -133,13 +135,20 @@ export const AnalysisReplayPanel: React.FC = () => {
             </span>
           </div>
 
-          {hasCharts && (
-            <Button onClick={handleDownloadAll} disabled={isDownloading} variant="secondary" style={{ fontSize: 10, padding: '8px 16px', gap: 8 }}>
-              <Download size={14} /> {isDownloading ? 'Exporting...' : 'Export CSV'}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button onClick={() => setShowExperiments(true)} variant="secondary" style={{ fontSize: 10, padding: '8px 16px', gap: 8 }}>
+              <FolderOpen size={14} /> Past Runs
             </Button>
-          )}
+            {hasCharts && (
+              <Button onClick={handleDownloadAll} disabled={isDownloading} variant="secondary" style={{ fontSize: 10, padding: '8px 16px', gap: 8 }}>
+                <Download size={14} /> {isDownloading ? 'Exporting...' : 'Export CSV'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
+
+      {showExperiments && <ExperimentsModal onClose={() => setShowExperiments(false)} />}
 
       {/* ── ANALYSIS CONTENT ─────────────────────────────────────── */}
       <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>

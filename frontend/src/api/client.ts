@@ -9,7 +9,6 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...options?.headers },
   });
   if (!res.ok) {
-    // Try to extract the backend's error message
     try {
       const body = await res.json();
       if (body?.message) throw new Error(body.message);
@@ -19,6 +18,27 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     throw new Error(`API Error: ${res.statusText}`);
   }
   return res.json() as Promise<T>;
+}
+
+export interface ExperimentMeta {
+  run_id: string;
+  run_name: string;
+  mode: 'train' | 'simulate';
+  started_at: string;
+  finished_at: string;
+  num_episodes: number;
+  num_agents: number;
+  num_nodes: number;
+  final_rewards: number[];
+  final_trips: number[];
+}
+
+export interface SavedGraphMeta {
+  graph_id: string;
+  name: string;
+  saved_at: string;
+  num_nodes: number;
+  num_agents: number;
 }
 
 export const api = {
@@ -38,14 +58,14 @@ export const api = {
   },
 
   train: {
-    start: () => fetchJson<{ status: "ok"; message: string }>('/train/start', { method: 'POST' }),
+    start: (runName = "") => fetchJson<{ status: "ok"; message: string; run_id: string }>('/train/start', { method: 'POST', body: JSON.stringify({ run_name: runName }) }),
     stop: () => fetchJson<{ status: "ok" }>('/train/stop', { method: 'POST' }),
     pause: () => fetchJson<{ status: "ok"; paused: true }>('/train/pause', { method: 'POST' }),
     resume: () => fetchJson<{ status: "ok"; paused: false }>('/train/resume', { method: 'POST' }),
   },
 
   simulate: {
-    start: () => fetchJson<{ status: "ok"; message: string }>('/simulate/start', { method: 'POST' }),
+    start: (runName = "") => fetchJson<{ status: "ok"; message: string; run_id: string }>('/simulate/start', { method: 'POST', body: JSON.stringify({ run_name: runName }) }),
   },
 
   analyze: {
@@ -53,10 +73,23 @@ export const api = {
       fetchJson<AnalysisResponse>('/analyze/compute', { method: 'POST', body: JSON.stringify(data) }),
   },
 
-  status: () => fetchJson<{ training: boolean; paused: boolean; has_graph: boolean }>('/status'),
+  experiments: {
+    list: () => fetchJson<{ experiments: ExperimentMeta[] }>('/experiments'),
+    load: (runId: string) => fetchJson<{ status: "ok"; data: any }>(`/experiments/${runId}`),
+    delete: (runId: string) => fetchJson<{ status: "ok" }>(`/experiments/${runId}`, { method: 'DELETE' }),
+  },
+
+  graphs: {
+    save: (name: string, graph: Record<string, any>, layout: Record<string, [number, number]>) =>
+      fetchJson<{ status: "ok"; graph_id: string }>('/graphs/save', { method: 'POST', body: JSON.stringify({ name, graph, layout }) }),
+    list: () => fetchJson<{ graphs: SavedGraphMeta[] }>('/graphs'),
+    load: (graphId: string) => fetchJson<{ status: "ok"; data: any }>(`/graphs/${graphId}`),
+    delete: (graphId: string) => fetchJson<{ status: "ok" }>(`/graphs/${graphId}`, { method: 'DELETE' }),
+  },
+
+  status: () => fetchJson<{ training: boolean; paused: boolean; has_graph: boolean; run_id: string | null; run_name: string; run_mode: string | null }>('/status'),
 
   export: {
-    /** Triggers a ZIP download of the latest episode data (SQLite + CSVs). */
     downloadData: async () => {
       const res = await fetch('/api/export/data');
       if (!res.ok) {

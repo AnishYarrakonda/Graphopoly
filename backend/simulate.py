@@ -27,6 +27,7 @@ import torch
 from backend.config import GraphopolyConfig, NetworkConfig
 from backend.core.graph_world import GraphWorld
 from backend.core.env import GraphopolyEnv
+from backend.core.runner_utils import build_step_record, build_initial_step
 from backend.agent.gnn_network import GraphopolyGNN
 
 MODELS_DIR = Path(__file__).parent.parent / "models"
@@ -96,22 +97,13 @@ def simulate(
     # ── Single reset at the start of the simulation ───────────────────────
     env.reset()
 
-    # Full step history for the entire run
-    step_history: list[dict] = [{
-        "step": 0,
-        "positions": [a.position for a in env.agents],
-        "prices": {
-            str(n): round(a.prices.get(n, 0.0), 2)
-            for a in env.agents for n in a.owned_nodes
-        },
-        "actions": [],
-        "rewards": [],
-        "taxes": {},
-        "dest_completions": [],
-    }]
-
     # How often to fire callbacks (so frontend can animate)
     callback_interval = config.train.steps_per_episode
+
+    # step_history holds the CURRENT WINDOW only (reset after each broadcast).
+    # This bounds the WS payload to ~callback_interval entries regardless of
+    # how long the simulation runs, preventing browser OOM on long sessions.
+    step_history: list[dict] = [build_initial_step(env.agents)]
 
     # ── Continuous step loop ──────────────────────────────────────────────
     while True:
@@ -147,33 +139,7 @@ def simulate(
 
         global_step += 1
 
-        step_history.append({
-            "step": global_step,
-            "positions": [a.position for a in env.agents],
-            "prices": {
-                str(n): round(a.prices.get(n, 0.0), 2)
-                for a in env.agents for n in a.owned_nodes
-            },
-            "actions": [
-                {
-                    "move": act["move"],
-                    "price_changes": {
-                        str(k): v
-                        for k, v in act.get("price_changes", {}).items()
-                    },
-                }
-                for act in actions
-            ],
-            "rewards": [round(r, 3) for r in rewards],
-            "taxes": {
-                str(payer): {str(recv): amt for recv, amt in recvs.items()}
-                for payer, recvs in info.get("taxes", {}).items()
-            },
-            "dest_completions": [
-                {"agent": aid, "node": node}
-                for aid, node in info.get("dest_completions", [])
-            ],
-        })
+        step_history.append(build_step_record(global_step, env.agents, actions, rewards, info))
 
         # ── Periodic callback so frontend gets updates ────────────────────
         if global_step % callback_interval == 0:
@@ -197,6 +163,11 @@ def simulate(
                     "config_snapshot": config.to_dict(),
                     "stopped_early":   False,
                 })
+
+            # Reset the window — carry the last step forward as the new step-0
+            # so the next animation window starts from the correct position.
+            last = step_history[-1]
+            step_history = [{**last, "step": 0, "actions": [], "rewards": [], "taxes": {}, "dest_completions": []}]
 
     # ── Final callback on stop ────────────────────────────────────────────
     episode_rewards = [a.cumulative_reward for a in env.agents]
