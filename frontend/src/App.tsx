@@ -154,7 +154,7 @@ export default function App() {
           flex: 1,
           position: 'relative',
           overflow: 'hidden',
-          background: 'radial-gradient(circle at 40% 40%, #0d1e3a 0%, var(--color-bg) 100%)',
+          background: 'var(--color-bg)',
         }}>
           <GraphCanvas />
         </section>

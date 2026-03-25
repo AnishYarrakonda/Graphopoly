@@ -56,16 +56,28 @@ export const LiveStatsPanel: React.FC = () => {
     );
   }
 
+  const COL_HEADERS = ['Net Reward', 'Trips', 'Dest Rev', 'Tax Rev', 'Tax Paid', 'Avg/Step'];
+  const COL_GRID = '110px 56px repeat(6, 1fr)';
+
   return (
-    <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* ── AGENT CARDS GRID (HORIZONTAL) ────────────────── */}
-      <div style={{
-        display: 'flex',
-        gap: 10,
-        overflowX: 'auto',
-        paddingBottom: 4,
-        scrollbarWidth: 'none',
-      }}>
+    <div style={{ padding: '0', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* ── AGENT TABLE ─────────────────────────────────────── */}
+      <div>
+        {/* Column headers */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: COL_GRID,
+          gap: '0 12px',
+          padding: '6px 20px',
+          borderBottom: '1px solid var(--color-border)',
+        }}>
+          <span className="text-label">Agent</span>
+          <span className="text-label"></span>
+          {COL_HEADERS.map(h => (
+            <span key={h} className="text-label" style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.05em' }}>{h}</span>
+          ))}
+        </div>
+
         {Array.from({ length: numAgentsDisplay }, (_, i) => {
           const aid = String(i);
           const replayStats = replayTrajectoryStep?.agent_stats?.[aid];
@@ -77,44 +89,58 @@ export const LiveStatsPanel: React.FC = () => {
           const taxRev = detail?.tax_revenue ?? replayStats?.tax_revenue ?? 0;
           const taxPaid = detail?.tax_paid ?? replayStats?.tax_paid ?? 0;
           const destRev = detail?.dest_revenue ?? replayStats?.dest_revenue ?? 0;
-
+          const avgPerStep = displayStep > 0 ? reward / (displayStep + 1) : 0;
           const isProfitable = reward >= 0;
+
+          const cellStyle: React.CSSProperties = {
+            fontSize: 'var(--text-sm)',
+            fontWeight: 600,
+            color: 'var(--color-text)',
+            fontFamily: 'var(--font-mono)',
+            fontVariantNumeric: 'tabular-nums',
+            display: 'flex',
+            alignItems: 'center',
+          };
+
+          const fmt = (v: number) => Number.isInteger(v) ? String(v) : v.toFixed(1);
 
           return (
             <div key={i} style={{
-              minWidth: 250,
-              background: 'var(--color-bg-elevated)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-card)',
-              padding: '14px 16px',
-              borderLeft: `3px solid ${color}`,
-              boxShadow: 'var(--shadow-card)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
+              display: 'grid',
+              gridTemplateColumns: COL_GRID,
+              gap: '0 12px',
+              padding: '9px 20px',
+              borderBottom: '1px solid var(--color-border-subtle)',
+              alignItems: 'center',
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: 'var(--text-lg)', fontWeight: 700, color }}>Agent {i}</span>
-                <div style={{
-                  fontSize: 'var(--text-xs)',
-                  fontWeight: 600,
-                  padding: '2px 8px',
-                  background: isProfitable ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                  borderRadius: 'var(--radius-sm)',
-                  color: isProfitable ? 'var(--color-success)' : 'var(--color-danger)',
-                }}>
-                  {isProfitable ? 'Profit' : 'Loss'}
-                </div>
+              {/* Agent name */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 700, color }}> Agent {i}</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px 12px' }}>
-                <StatPill label="Net Reward" value={reward} color={isProfitable ? 'var(--color-success)' : 'var(--color-danger)'} />
-                <StatPill label="Trips" value={trips} />
-                <StatPill label="Dest Rev" value={destRev} />
-                <StatPill label="Tax Rev" value={taxRev} />
-                <StatPill label="Tax Paid" value={taxPaid} />
-                <StatPill label="Avg/Step" value={displayStep > 0 ? (reward / (displayStep + 1)) : 0} />
+              {/* Profit/Loss badge */}
+              <div style={{
+                fontSize: 10,
+                fontWeight: 700,
+                padding: '2px 6px',
+                background: isProfitable ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                borderRadius: 'var(--radius-sm)',
+                color: isProfitable ? 'var(--color-success)' : 'var(--color-danger)',
+                textAlign: 'center',
+                letterSpacing: '0.02em',
+                alignSelf: 'center',
+              }}>
+                {isProfitable ? 'Profit' : 'Loss'}
               </div>
+
+              {/* Metrics */}
+              <span style={{ ...cellStyle, color: isProfitable ? 'var(--color-success)' : 'var(--color-danger)' }}>{fmt(reward)}</span>
+              <span style={cellStyle}>{fmt(trips)}</span>
+              <span style={cellStyle}>{fmt(destRev)}</span>
+              <span style={cellStyle}>{fmt(taxRev)}</span>
+              <span style={cellStyle}>{fmt(taxPaid)}</span>
+              <span style={{ ...cellStyle, color: 'var(--color-text-secondary)' }}>{fmt(avgPerStep)}</span>
             </div>
           );
         })}
@@ -125,10 +151,9 @@ export const LiveStatsPanel: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         gap: 24,
-        padding: '10px 16px',
+        padding: '10px 20px',
         background: 'rgba(255,255,255,0.02)',
-        borderRadius: 'var(--radius-card)',
-        border: '1px solid var(--color-border)',
+        borderTop: '1px solid var(--color-border)',
       }}>
         <div style={{ display: 'flex', gap: 20 }}>
           <StatPill label="Step" value={displayStep} />

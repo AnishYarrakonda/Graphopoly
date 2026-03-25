@@ -1,33 +1,33 @@
 :root {
   /* ── Backgrounds ──────────────────────────────── */
-  --color-bg: #070b14;
-  --color-bg-elevated: #0c1220;
-  --color-bg-surface: #101828;
-  --color-bg-hover: #182236;
-  --color-bg-muted: #141e30;
+  --color-bg: #0b0c0d;
+  --color-bg-elevated: #111214;
+  --color-bg-surface: #161719;
+  --color-bg-hover: #1e2024;
+  --color-bg-muted: #1a1b1e;
 
   /* ── Borders ──────────────────────────────────── */
-  --color-border: rgba(96, 165, 250, 0.09);
-  --color-border-subtle: rgba(96, 165, 250, 0.05);
-  --color-border-active: rgba(96, 165, 250, 0.22);
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
+  --color-border-active: rgba(255, 255, 255, 0.16);
 
   /* ── Text ─────────────────────────────────────── */
-  --color-text: #e8f0fe;
-  --color-text-secondary: rgba(232, 240, 254, 0.70);
-  --color-text-mid: rgba(232, 240, 254, 0.75);
-  --color-text-dim: rgba(232, 240, 254, 0.45);
-  --color-text-muted: rgba(232, 240, 254, 0.28);
+  --color-text: #f0f0f0;
+  --color-text-secondary: rgba(240, 240, 240, 0.65);
+  --color-text-mid: rgba(240, 240, 240, 0.72);
+  --color-text-dim: rgba(240, 240, 240, 0.42);
+  --color-text-muted: rgba(240, 240, 240, 0.26);
 
-  /* ── Accent (electric blue) ───────────────────── */
-  --color-accent: #3b9eff;
-  --color-accent-dim: #1d6fd4;
-  --color-accent-glow: rgba(59, 158, 255, 0.14);
-  --color-accent-surface: rgba(59, 158, 255, 0.07);
+  /* ── Accent (action blue — clean, no glow) ────── */
+  --color-accent: #0066FF;
+  --color-accent-dim: #0052cc;
+  --color-accent-glow: rgba(0, 102, 255, 0.10);
+  --color-accent-surface: rgba(0, 102, 255, 0.06);
 
   /* ── Status ───────────────────────────────────── */
-  --color-success: #34d399;
-  --color-warning: #fbbf24;
-  --color-danger: #f87171;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
 
   /* ── Typography ───────────────────────────────── */
   --font-sans: 'Inter', 'Helvetica Neue', 'Arial', sans-serif;
@@ -58,19 +58,19 @@
 
   /* ── Radii ────────────────────────────────────── */
   --radius-sm: 4px;
-  --radius-btn: 6px;
-  --radius-input: 6px;
-  --radius-card: 8px;
-  --radius-lg: 12px;
+  --radius-btn: 5px;
+  --radius-input: 5px;
+  --radius-card: 6px;
+  --radius-lg: 10px;
   --radius-pill: 20px;
 
   /* ── Shadows ──────────────────────────────────── */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16);
-  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.32), 0 2px 4px rgba(0, 0, 0, 0.16);
-  --shadow-float: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-float: 0 8px 32px rgba(0, 0, 0, 0.5);
   --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-glow-accent: 0 0 20px rgba(59, 158, 255, 0.18);
+  --shadow-glow-accent: 0 0 0 1px rgba(0, 102, 255, 0.20);
 
   /* ── Transitions ──────────────────────────────── */
   --transition-fast: 0.12s cubic-bezier(0.4, 0, 0.2, 1);

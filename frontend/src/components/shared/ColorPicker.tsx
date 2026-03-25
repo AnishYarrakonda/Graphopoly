@@ -37,7 +37,8 @@ function toHex(r: number, g: number, b: number): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-const SV_W = 140, SV_H = 100, HUE_W = 140, HUE_H = 10;
+const SV_W = 160, SV_H = 110, HUE_W = 160, HUE_H = 12;
+const POPUP_W = SV_W + 24;
 
 interface Props {
   value: string;
@@ -51,10 +52,12 @@ export const ColorPicker: React.FC<Props> = ({ value, onChange }) => {
     return rgb ? rgbToHsv(...rgb) : [210, 0.55, 0.65];
   });
   const [hexInput, setHexInput] = useState(value);
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  const svRef   = useRef<HTMLCanvasElement>(null);
-  const hueRef  = useRef<HTMLCanvasElement>(null);
-  const popRef  = useRef<HTMLDivElement>(null);
+  const svRef    = useRef<HTMLCanvasElement>(null);
+  const hueRef   = useRef<HTMLCanvasElement>(null);
+  const popRef   = useRef<HTMLDivElement>(null);
+  const btnRef   = useRef<HTMLButtonElement>(null);
   const dragging = useRef<'sv'|'hue'|null>(null);
 
   // Sync from parent
@@ -70,11 +73,31 @@ export const ColorPicker: React.FC<Props> = ({ value, onChange }) => {
     }
   }, [value]);
 
+  const computePopupPos = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const POPUP_H = SV_H + HUE_H + 80;
+    const GAP = 10;
+    let top = rect.top - POPUP_H - GAP;
+    if (top < 8) top = rect.bottom + GAP;
+    let left = rect.left + rect.width / 2 - POPUP_W / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - POPUP_W - 8));
+    setPopupPos({ top, left });
+  }, []);
+
+  const handleOpen = () => {
+    computePopupPos();
+    setOpen(o => !o);
+  };
+
   // Click-outside close
   useEffect(() => {
     if (!open) return;
     const h = (e: MouseEvent) => {
-      if (popRef.current && !popRef.current.contains(e.target as Node)) setOpen(false);
+      if (
+        popRef.current && !popRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false);
     };
     document.addEventListener('mousedown', h);
     return () => document.removeEventListener('mousedown', h);
@@ -145,47 +168,47 @@ export const ColorPicker: React.FC<Props> = ({ value, onChange }) => {
     if (rgb) { setHsv(rgbToHsv(...rgb)); onChange(normalized); }
   };
 
-  // Cursor indicators
   const svCursorX = hsv[1] * SV_W - 5;
   const svCursorY = (1 - hsv[2]) * SV_H - 5;
   const hueCursorX = (hsv[0] / 360) * HUE_W - 5;
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }} ref={popRef}>
+    <div style={{ position: 'relative', display: 'inline-block' }}>
       {/* Swatch button */}
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={btnRef}
+        onClick={handleOpen}
         style={{
           width: 34, height: 34, borderRadius: '50%',
           background: value,
           border: open ? '2px solid rgba(255,255,255,0.65)' : '2px solid rgba(255,255,255,0.18)',
-          boxShadow: `0 0 10px ${value}70`,
           cursor: 'pointer',
-          transition: 'border-color 0.15s, box-shadow 0.2s',
+          transition: 'border-color 0.15s',
           outline: 'none',
           flexShrink: 0,
         }}
       />
 
-      {/* Picker popup */}
+      {/* Picker popup — fixed to viewport so it is never clipped by overflow */}
       {open && (
         <div
+          ref={popRef}
           style={{
-            position: 'absolute',
-            bottom: 'calc(100% + 12px)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: SV_W + 20,
-            background: '#161616',
-            border: '1px solid rgba(255,255,255,0.1)',
+            position: 'fixed',
+            top: popupPos.top,
+            left: popupPos.left,
+            width: POPUP_W,
+            background: '#141416',
+            border: '1px solid rgba(255,255,255,0.12)',
             padding: 12,
-            zIndex: 9999,
-            boxShadow: '0 12px 40px rgba(0,0,0,0.7)',
+            zIndex: 99999,
+            boxShadow: '0 16px 48px rgba(0,0,0,0.8)',
+            borderRadius: 6,
           }}
           onMouseDown={e => e.stopPropagation()}
         >
           {/* SV canvas */}
-          <div style={{ position: 'relative', marginBottom: 10, cursor: 'crosshair', lineHeight: 0 }}>
+          <div style={{ position: 'relative', marginBottom: 10, cursor: 'crosshair', lineHeight: 0, borderRadius: 3, overflow: 'hidden' }}>
             <canvas
               ref={svRef}
               width={SV_W}
@@ -193,15 +216,10 @@ export const ColorPicker: React.FC<Props> = ({ value, onChange }) => {
               style={{ display: 'block', width: SV_W, height: SV_H }}
               onMouseDown={e => { dragging.current = 'sv'; pickSV(e); }}
             />
-            {/* Crosshair */}
             <div style={{
-              position: 'absolute',
-              left: svCursorX,
-              top: svCursorY,
-              width: 10, height: 10,
-              borderRadius: '50%',
-              border: '2px solid #fff',
-              boxShadow: '0 0 4px rgba(0,0,0,0.6)',
+              position: 'absolute', left: svCursorX, top: svCursorY,
+              width: 10, height: 10, borderRadius: '50%',
+              border: '2px solid #fff', boxShadow: '0 0 4px rgba(0,0,0,0.6)',
               pointerEvents: 'none',
             }} />
           </div>
@@ -215,27 +233,19 @@ export const ColorPicker: React.FC<Props> = ({ value, onChange }) => {
               style={{ display: 'block', width: HUE_W, height: HUE_H, borderRadius: 2 }}
               onMouseDown={e => { dragging.current = 'hue'; pickHue(e); }}
             />
-            {/* Hue thumb */}
             <div style={{
-              position: 'absolute',
-              left: hueCursorX,
-              top: -2,
-              width: 10, height: 14,
-              borderRadius: 2,
-              border: '2px solid #fff',
-              background: `hsl(${hsv[0]},100%,50%)`,
-              boxShadow: '0 0 4px rgba(0,0,0,0.5)',
-              pointerEvents: 'none',
+              position: 'absolute', left: hueCursorX, top: -2,
+              width: 10, height: 16, borderRadius: 2,
+              border: '2px solid #fff', background: `hsl(${hsv[0]},100%,50%)`,
+              boxShadow: '0 0 4px rgba(0,0,0,0.5)', pointerEvents: 'none',
             }} />
           </div>
 
           {/* Preview + hex input */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div style={{
-              width: 22, height: 22,
-              background: value,
-              border: '1px solid rgba(255,255,255,0.15)',
-              flexShrink: 0,
+              width: 24, height: 24, background: value,
+              border: '1px solid rgba(255,255,255,0.15)', borderRadius: 3, flexShrink: 0,
             }} />
             <input
               value={hexInput}
@@ -243,18 +253,14 @@ export const ColorPicker: React.FC<Props> = ({ value, onChange }) => {
               maxLength={7}
               spellCheck={false}
               style={{
-                flex: 1,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: 'rgba(255,255,255,0.65)',
-                fontFamily: "'Inter', monospace",
-                fontSize: 11,
-                padding: '5px 8px',
-                outline: 'none',
-                letterSpacing: '0.08em',
+                flex: 1, background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.10)',
+                color: 'rgba(255,255,255,0.8)', fontFamily: 'monospace',
+                fontSize: 12, padding: '6px 10px', outline: 'none',
+                letterSpacing: '0.08em', borderRadius: 3,
               }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)')}
+              onFocus={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)')}
             />
           </div>
         </div>

@@ -59,7 +59,7 @@ def main():
     if start_frontend:
         # Check if frontend deps are installed
         if not (frontend_dir / "node_modules").exists():
-            print("📦 Installing frontend dependencies...")
+            print("Installing frontend dependencies...")
             subprocess.run(
                 ["npm", "install"],
                 cwd=str(frontend_dir),
@@ -68,7 +68,6 @@ def main():
 
         kill_port(5173)
 
-        print(f"🚀 Starting Vite dev server...")
         vite_process = subprocess.Popen(
             ["npm", "run", "dev"],
             cwd=str(frontend_dir),
@@ -76,20 +75,21 @@ def main():
             stderr=subprocess.STDOUT,
         )
 
-    print(f"""
-╔══════════════════════════════════════════╗
-║            G R A P H O P O L Y           ║
-╠══════════════════════════════════════════╣
-║  Backend API:  http://localhost:{args.port}      ║""")
+        # Wait for Vite to be ready before printing the URL
+        import re as _re
+        ready = False
+        while not ready and vite_process.poll() is None:
+            line = vite_process.stdout.readline().decode("utf-8", errors="replace")
+            if "Local:" in line or "localhost" in line:
+                ready = True
 
-    if start_frontend:
-        print(f"║  Frontend:    http://localhost:5173       ║")
-        print(f"║  Open → http://localhost:5173             ║")
+        print("\n  ┌─────────────────────────────────────────┐")
+        print("  │  Graphopoly is ready                    │")
+        print("  │                                         │")
+        print("  │  Open  →  http://localhost:5173         │")
+        print("  └─────────────────────────────────────────┘\n")
     else:
-        print(f"║  Run frontend: cd frontend && npm run dev ║")
-
-    print(f"""╚══════════════════════════════════════════╝
-""")
+        print("  → Run 'cd frontend && npm run dev' to start the frontend\n")
 
     try:
         import uvicorn

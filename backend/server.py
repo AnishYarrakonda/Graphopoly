@@ -19,8 +19,7 @@ from datetime import datetime
 
 import numpy as np
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -156,13 +155,7 @@ def sync_broadcast(message: dict) -> None:
 
 @app.get("/")
 async def index():
-    dist = FRONTEND_DIR / "dist" / "index.html"
-    if dist.exists():
-        return FileResponse(dist)
-    return JSONResponse(
-        {"message": "Frontend not built. Use Vite dev server on :5173 or run 'npm run build' in frontend/"},
-        404,
-    )
+    return RedirectResponse(url="http://localhost:5173", status_code=302)
 
 
 @app.post("/api/graph/build")
@@ -624,17 +617,6 @@ async def websocket_endpoint(ws: WebSocket):
     except WebSocketDisconnect:
         _state["websockets"].discard(ws)
 
-
-# Serve Vite build output (production)
-_dist_dir = FRONTEND_DIR / "dist"
-if _dist_dir.exists():
-    _assets_dir = _dist_dir / "assets"
-    if _assets_dir.exists():
-        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
-
-    @app.get("/{full_path:path}")
-    async def spa_catchall(full_path: str):
-        return FileResponse(_dist_dir / "index.html")
 
 
 def run_server(host: str = "0.0.0.0", port: int = 8000):

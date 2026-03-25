@@ -88,10 +88,9 @@ export const Header: React.FC = () => {
           left: 0;
           right: 0;
           z-index: 100;
-          background: linear-gradient(to right, #0a1628, #0c1220);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid var(--color-border);
-          box-shadow: 0 1px 12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(59, 158, 255, 0.04);
+          background: var(--color-bg-elevated);
+          border-bottom: 1px solid var(--color-border-active);
+          box-shadow: none;
         }
 
         .header-left {
@@ -124,7 +123,7 @@ export const Header: React.FC = () => {
         }
 
         .header-subtitle {
-          font-size: 9px;
+          font-size: 11px;
           font-weight: 500;
           letter-spacing: 0.08em;
           text-transform: uppercase;

@@ -23,6 +23,8 @@ export const AnalysisReplayPanel: React.FC = () => {
   const { isTraining } = useTrainingStore();
   const { setAnalysisData, episodeData: analyzeEpisodeData, timeline } = useAnalyzeStore();
   const agentColors = useUIStore(s => s.agentColors);
+  const animSpeed = useUIStore(s => s.animSpeed);
+  const setAnimSpeed = useUIStore(s => s.setAnimSpeed);
 
   const [isComputing, setIsComputing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -112,12 +114,30 @@ export const AnalysisReplayPanel: React.FC = () => {
           <Button onClick={() => jumpForward(10)} variant="secondary" style={{ padding: '8px 12px' }}><FastForward size={14} /></Button>
         </div>
 
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-             {hasCharts && (
-               <Button onClick={handleDownloadAll} disabled={isDownloading} variant="secondary" style={{ fontSize: 10, padding: '8px 16px', gap: 8 }}>
-                 <Download size={14} /> {isDownloading ? 'Exporting...' : 'Export CSV'}
-               </Button>
-             )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Playback speed */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="text-label" style={{ whiteSpace: 'nowrap', fontSize: 'var(--text-xs)' }}>Speed</span>
+            <input
+              type="range"
+              className="range-slider"
+              min={0}
+              max={1000}
+              step={50}
+              value={animSpeed}
+              onChange={e => setAnimSpeed(Number(e.target.value))}
+              style={{ width: 80 }}
+            />
+            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: animSpeed === 0 ? 'var(--color-success)' : 'var(--color-text)', fontFamily: 'var(--font-mono)', minWidth: 36 }}>
+              {animSpeed === 0 ? 'Max' : `${animSpeed}ms`}
+            </span>
+          </div>
+
+          {hasCharts && (
+            <Button onClick={handleDownloadAll} disabled={isDownloading} variant="secondary" style={{ fontSize: 10, padding: '8px 16px', gap: 8 }}>
+              <Download size={14} /> {isDownloading ? 'Exporting...' : 'Export CSV'}
+            </Button>
+          )}
         </div>
       </div>
 

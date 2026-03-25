@@ -292,10 +292,10 @@ export const OnboardingOverlay: React.FC = () => {
           left: cardPos.left,
           width: CARD_WIDTH,
           zIndex: 9999,
-          background: 'rgba(12,12,12,0.97)',
-          border: '1px solid rgba(255,255,255,0.12)',
-          borderLeft: '3px solid rgba(255,255,255,0.3)',
-          boxShadow: '0 12px 48px rgba(0,0,0,0.8)',
+          background: 'var(--color-bg-elevated)',
+          border: '1px solid var(--color-border-active)',
+          borderLeft: '3px solid var(--color-accent)',
+          boxShadow: '0 12px 48px rgba(0,0,0,0.7)',
           padding: '28px 28px 24px',
           fontFamily: "'Inter', sans-serif",
           pointerEvents: 'auto',
@@ -341,7 +341,7 @@ export const OnboardingOverlay: React.FC = () => {
         <h3 style={{
           fontSize: 17,
           fontWeight: 600,
-          color: '#e8e8e8',
+          color: 'var(--color-text)',
           marginBottom: 12,
           lineHeight: 1.3,
         }}>
@@ -349,7 +349,7 @@ export const OnboardingOverlay: React.FC = () => {
         </h3>
         <p style={{
           fontSize: 13,
-          color: 'rgba(255,255,255,0.55)',
+          color: 'var(--color-text-secondary)',
           lineHeight: 1.7,
           marginBottom: 24,
         }}>
@@ -400,19 +400,20 @@ export const OnboardingOverlay: React.FC = () => {
             <button
               onClick={next}
               style={{
-                background: '#e8e8e8',
+                background: 'var(--color-accent)',
                 border: 'none',
-                color: '#0a0a0a',
+                color: '#fff',
                 fontSize: 12,
                 fontWeight: 600,
                 padding: '8px 22px',
                 cursor: 'pointer',
                 fontFamily: "'Inter', sans-serif",
-                letterSpacing: '0.05em',
-                transition: 'background 0.2s',
+                letterSpacing: '0.02em',
+                borderRadius: 4,
+                transition: 'background 0.15s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#ffffff')}
-              onMouseLeave={e => (e.currentTarget.style.background = '#e8e8e8')}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-accent-dim)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-accent)')}
             >
               {isLast ? 'Get started' : 'Next'}
             </button>
