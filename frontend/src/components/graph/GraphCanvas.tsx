@@ -26,6 +26,16 @@ export const GraphCanvas: React.FC = () => {
   const storeSetResumed  = useTrainingStore(s => s.resumeTraining);
   const pausedForDragRef = useRef(false);
 
+  // Auto-fit when a new graph is loaded (num_nodes changes)
+  const prevNumNodes = useRef<number>(0);
+  useEffect(() => {
+    const n = data?.num_nodes ?? 0;
+    if (n > 0 && n !== prevNumNodes.current) {
+      prevNumNodes.current = n;
+      setTimeout(centerView, 150);
+    }
+  }, [data?.num_nodes, centerView]);
+
   const edgeSourceRef = useRef<number | null>(null);
   const dragNodeRef = useRef<number | null>(null);
   const dragMovedRef = useRef(false);

@@ -104,6 +104,34 @@ export const GraphRenderer: React.FC = () => {
         })}
       </g>
 
+      {/* Agent trails — fading dots showing recent path during live simulation */}
+      {isTraining && animSpeed > 0 && simAnimStep > 0 && (
+        <g id="trailLayer" pointerEvents="none">
+          {(() => {
+            const TRAIL_LEN = 7;
+            const numAgents = Object.keys(agentPositions).length;
+            const elements: React.ReactElement[] = [];
+            for (let agentId = 0; agentId < numAgents; agentId++) {
+              const color = getColor(agentId);
+              for (let t = 1; t <= Math.min(TRAIL_LEN, simAnimStep); t++) {
+                const idx = Math.max(0, simAnimStep - t);
+                const step = stepHistory[idx];
+                if (!step?.positions) continue;
+                const nodeId = step.positions[agentId];
+                const pos = getPos(nodeId);
+                if (!pos) continue;
+                const opacity = ((TRAIL_LEN - t) / TRAIL_LEN) * 0.28;
+                const r = Math.max(2.5, 7 - t * 0.6);
+                elements.push(
+                  <circle key={`trail-${agentId}-${t}`} cx={pos[0]} cy={pos[1]} r={r} fill={color} opacity={opacity} />
+                );
+              }
+            }
+            return elements;
+          })()}
+        </g>
+      )}
+
       {/* Nodes */}
       <g id="nodeLayer">
         {nodesList.map(id => {

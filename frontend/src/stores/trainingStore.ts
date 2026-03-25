@@ -7,6 +7,7 @@ import { adaptToEpisodeJSON } from '../lib/episodeAdapter';
 interface TrainingState {
   isTraining: boolean;
   isPaused: boolean;
+  runName: string;
   currentEpisode: number;
   totalEpisodes: number;
   episodeRewards: number[];
@@ -24,7 +25,7 @@ interface TrainingState {
   /** Queue of step-histories waiting to be animated. */
   stepHistoryQueue: StepHistoryEntry[][];
 
-  startTraining: () => void;
+  startTraining: (runName?: string) => void;
   stopTraining: () => void;
   pauseTraining: () => void;
   resumeTraining: () => void;
@@ -41,6 +42,7 @@ interface TrainingState {
 export const useTrainingStore = create<TrainingState>((set, get) => ({
   isTraining: false,
   isPaused: false,
+  runName: '',
   currentEpisode: 0,
   totalEpisodes: 0,
   episodeRewards: [],
@@ -55,8 +57,8 @@ export const useTrainingStore = create<TrainingState>((set, get) => ({
   simAnimStep: 0,
   stepHistoryQueue: [],
 
-  startTraining: () => set({
-    isTraining: true, isPaused: false, currentEpisode: 0, totalEpisodes: 0,
+  startTraining: (runName = '') => set({
+    isTraining: true, isPaused: false, runName, currentEpisode: 0, totalEpisodes: 0,
     episodeRewards: [], episodeTrips: [], losses: {}, agentDetails: [],
     stepHistory: [], currentPrices: {}, simAnimStep: 0, stepHistoryQueue: [],
     latestEpisodeData: null, latestGraphData: null, latestLayout: null,

@@ -184,7 +184,7 @@ export const SettingsPanel: React.FC = () => {
     setError(null);
     try {
       if (!graphData) { setError('Build graph first'); return; }
-      useTrainingStore.getState().startTraining();
+      useTrainingStore.getState().startTraining(runName.trim());
       await api.graph.build({
         num_nodes: graphData.num_nodes,
         edges: graphData.edges,
