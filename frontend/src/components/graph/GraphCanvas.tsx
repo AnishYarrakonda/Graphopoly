@@ -26,16 +26,6 @@ export const GraphCanvas: React.FC = () => {
   const storeSetResumed  = useTrainingStore(s => s.resumeTraining);
   const pausedForDragRef = useRef(false);
 
-  // Auto-fit when a new graph is loaded (num_nodes changes)
-  const prevNumNodes = useRef<number>(0);
-  useEffect(() => {
-    const n = data?.num_nodes ?? 0;
-    if (n > 0 && n !== prevNumNodes.current) {
-      prevNumNodes.current = n;
-      setTimeout(centerView, 150);
-    }
-  }, [data?.num_nodes, centerView]);
-
   const edgeSourceRef = useRef<number | null>(null);
   const dragNodeRef = useRef<number | null>(null);
   const dragMovedRef = useRef(false);
@@ -88,6 +78,16 @@ export const GraphCanvas: React.FC = () => {
     const t = d3.zoomIdentity.translate(box.width / 2, box.height / 2).scale(0.75).translate(-midX, -midY);
     d3.select(svgNode).transition().duration(600).call(zoomRef.current.transform, t);
   }, [layout]);
+
+  // Auto-fit when a new graph is loaded (num_nodes changes)
+  const prevNumNodes = useRef<number>(0);
+  useEffect(() => {
+    const n = data?.num_nodes ?? 0;
+    if (n > 0 && n !== prevNumNodes.current) {
+      prevNumNodes.current = n;
+      setTimeout(centerView, 150);
+    }
+  }, [data?.num_nodes, centerView]);
 
   const screenToGraph = useCallback((clientX: number, clientY: number): [number, number] => {
     const svg = svgRef.current;
